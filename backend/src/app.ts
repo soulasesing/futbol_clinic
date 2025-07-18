@@ -13,6 +13,8 @@ import attendanceRoutes from './routes/attendanceRoutes';
 import statsRoutes from './routes/statsRoutes';
 import dashboardRoutes from './routes/dashboardRoutes';
 import brandingRoutes from './routes/brandingRoutes';
+import uploadRoutes from './routes/uploadRoutes';
+import path from 'path';
 
 dotenv.config();
 
@@ -33,6 +35,8 @@ app.use('/api/attendance', attendanceRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/branding', brandingRoutes);
+app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
+app.use('/api/upload', uploadRoutes);
 
 app.get('/api/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok' });
