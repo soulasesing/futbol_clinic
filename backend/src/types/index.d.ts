@@ -1,0 +1,1 @@
+// TODO: Definir tipos globales y compartidos aquí 

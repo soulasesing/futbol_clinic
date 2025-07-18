@@ -1,0 +1,23 @@
+version: '3.8'
+services:
+  backend:
+    build: ./backend
+    command: sh -c "yarn install && yarn dev"
+    volumes:
+      - ./backend:/app
+    ports:
+      - '4000:4000'
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@host.docker.internal:5432/futbol_clinic
+      NODE_ENV: development
+  frontend:
+    build: ./frontend
+    command: sh -c "yarn install && yarn dev"
+    volumes:
+      - ./frontend:/app
+    ports:
+      - '3000:3000'
+    environment:
+      NODE_ENV: development
+    depends_on:
+      - backend 
