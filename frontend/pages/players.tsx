@@ -10,6 +10,7 @@ interface Player {
   fecha_nacimiento: string;
   categoria: string;
   foto_url?: string;
+  document_url?: string;
 }
 
 const PAGE_SIZE = 10;
@@ -50,6 +51,10 @@ const PlayersPage: React.FC = () => {
   const [formError, setFormError] = useState('');
   const [preview, setPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [docPreview, setDocPreview] = useState<string | null>(null);
+  const docInputRef = useRef<HTMLInputElement>(null);
+  const [showDocModal, setShowDocModal] = useState(false);
+  const [selectedDocUrl, setSelectedDocUrl] = useState<string>('');
 
   // Fetch players
   const fetchPlayers = () => {
@@ -80,20 +85,26 @@ const PlayersPage: React.FC = () => {
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
 
   // Crear/editar jugador
-  const handleSave = async (player: Player, file?: File) => {
+  const handleSave = async (player: Player, file?: File, docFile?: File) => {
     setFormLoading(true);
     setFormError('');
     try {
-      let foto_url = player.foto_url;
+      let foto_url: string | undefined = player.foto_url ?? undefined;
+      let document_url: string | undefined = player.document_url ?? undefined;
       if (file) {
-        foto_url = await uploadImage(file);
+        const uploaded = await uploadImage(file);
+        foto_url = uploaded ?? undefined;
+      }
+      if (docFile) {
+        const uploadedDoc = await uploadImage(docFile);
+        document_url = uploadedDoc ?? undefined;
       }
       if (editPlayer) {
         // Editar
         const res = await fetch(`/api/players/${editPlayer.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
-          body: JSON.stringify({ ...player, foto_url }),
+          body: JSON.stringify({ ...player, foto_url, document_url }),
         });
         if (!res.ok) throw new Error('Error al editar jugador');
       } else {
@@ -101,7 +112,7 @@ const PlayersPage: React.FC = () => {
         const res = await fetch('/api/players', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
-          body: JSON.stringify({ ...player, foto_url }),
+          body: JSON.stringify({ ...player, foto_url, document_url }),
         });
         if (!res.ok) throw new Error('Error al crear jugador');
       }
@@ -109,6 +120,7 @@ const PlayersPage: React.FC = () => {
       setShowForm(false);
       setEditPlayer(null);
       setPreview(null);
+      setDocPreview(null);
     } catch (err: any) {
       setFormError(err.message);
     } finally {
@@ -161,6 +173,7 @@ const PlayersPage: React.FC = () => {
                     <th className="p-3 text-left">Cédula</th>
                     <th className="p-3 text-left">Categoría</th>
                     <th className="p-3 text-left">Edad</th>
+                    <th className="p-3 text-left">Documento</th>
                     <th className="p-3 text-left">Acciones</th>
                   </tr>
                 </thead>
@@ -181,9 +194,33 @@ const PlayersPage: React.FC = () => {
                       <td className="p-2">{player.cedula}</td>
                       <td className="p-2">{player.categoria}</td>
                       <td className="p-2">{calcularEdad(player.fecha_nacimiento)}</td>
+                      {/* Documento de identidad */}
+                      <td className="p-2 text-center">
+                        {player.document_url ? (
+                          <button
+                            tabIndex={0}
+                            aria-label="Ver documento de identidad"
+                            onClick={() => {
+                              setSelectedDocUrl(player.document_url!);
+                              setShowDocModal(true);
+                            }}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                setSelectedDocUrl(player.document_url!);
+                                setShowDocModal(true);
+                              }
+                            }}
+                            className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-emerald-100 hover:bg-emerald-200 focus:outline-none focus:ring-2 focus:ring-emerald-400 text-emerald-700 text-lg cursor-pointer transition-all"
+                          >
+                            👁️
+                          </button>
+                        ) : (
+                          <span className="text-gray-300">—</span>
+                        )}
+                      </td>
                       <td className="p-2 flex gap-2">
                         <button
-                          onClick={() => { setEditPlayer(player); setShowForm(true); setPreview(player.foto_url || null); }}
+                          onClick={() => { setEditPlayer(player); setShowForm(true); setPreview(player.foto_url || null); setDocPreview(player.document_url || null); }}
                           className="px-3 py-1 rounded bg-emerald-100 text-emerald-700 font-bold hover:bg-emerald-200"
                         >
                           Editar
@@ -237,6 +274,7 @@ const PlayersPage: React.FC = () => {
                     const categoria = (form.elements.namedItem('categoria') as HTMLInputElement).value;
                     const fecha_nacimiento = (form.elements.namedItem('fecha_nacimiento') as HTMLInputElement).value;
                     const file = fileInputRef.current?.files?.[0];
+                    const docFile = docInputRef.current?.files?.[0];
                     await handleSave({
                       id: editPlayer?.id || '',
                       nombre,
@@ -245,7 +283,8 @@ const PlayersPage: React.FC = () => {
                       categoria,
                       fecha_nacimiento,
                       foto_url: editPlayer?.foto_url,
-                    }, file);
+                      document_url: editPlayer?.document_url,
+                    }, file, docFile);
                   }}
                   className="flex flex-col gap-4"
                 >
@@ -308,6 +347,29 @@ const PlayersPage: React.FC = () => {
                       <img src={preview || undefined} alt="Preview" className="w-20 h-20 rounded-full object-cover border mt-2 mx-auto" />
                     )}
                   </div>
+                  {/* Subida de documento de identidad */}
+                  <div className="flex flex-col gap-2">
+                    <label className="font-medium text-gray-700">Documento de identidad (cédula/pasaporte, opcional)</label>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png"
+                      ref={docInputRef}
+                      onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = ev => setDocPreview(ev.target?.result as string);
+                          reader.readAsDataURL(file);
+                        } else {
+                          setDocPreview(editPlayer?.document_url || null);
+                        }
+                      }}
+                      className="border border-emerald-200 rounded px-2 py-1"
+                    />
+                    {docPreview && (
+                      <img src={docPreview || undefined} alt="Preview documento" className="w-28 h-20 rounded object-cover border mt-2 mx-auto" />
+                    )}
+                  </div>
                   {formError && <div className="text-red-600 text-sm text-center">{formError}</div>}
                   <button
                     type="submit"
@@ -322,6 +384,30 @@ const PlayersPage: React.FC = () => {
           )}
         </div>
       </main>
+      {/* Modal para mostrar documento */}
+      {showDocModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] relative">
+            <button
+              onClick={() => setShowDocModal(false)}
+              className="absolute top-4 right-4 text-gray-500 hover:text-red-500 text-2xl font-bold z-10 bg-white rounded-full w-8 h-8 flex items-center justify-center shadow"
+              aria-label="Cerrar"
+            >
+              ×
+            </button>
+            <div className="p-6">
+              <h3 className="text-xl font-bold mb-4 text-emerald-700">Documento de Identidad</h3>
+              <div className="flex justify-center">
+                <img 
+                  src={selectedDocUrl} 
+                  alt="Documento de identidad" 
+                  className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
