@@ -1,6 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
+
+interface Tenant {
+  id: string;
+  nombre: string;
+}
 
 const Login: React.FC = () => {
   const { login } = useAuth();
@@ -8,8 +13,16 @@ const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [tenantId, setTenantId] = useState('');
+  const [tenants, setTenants] = useState<Tenant[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/tenants')
+      .then(res => res.json())
+      .then(data => setTenants(Array.isArray(data) ? data : []))
+      .catch(() => setTenants([]));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,15 +85,20 @@ const Login: React.FC = () => {
             />
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium text-gray-700">
-            Código de escuela
-            <input
-              type="text"
+            Escuela
+            <select
               value={tenantId}
               onChange={e => setTenantId(e.target.value)}
               required
               className="rounded-lg border border-emerald-200 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400"
-              aria-label="Código de escuela"
-            />
+              aria-label="Escuela"
+            >
+              <option value="" disabled>Selecciona una escuela...</option>
+              {tenants.map(t => (
+                <option key={t.id} value={t.id}>{t.nombre}</option>
+              ))}
+              <option value="super_admin">Super Admin (acceso global)</option>
+            </select>
           </label>
           {error && <div className="text-red-600 text-sm text-center">{error}</div>}
           <button

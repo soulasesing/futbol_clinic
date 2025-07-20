@@ -1,21 +1,34 @@
 import React from 'react';
 import Link from 'next/link';
 import { useAuth } from '../contexts/AuthContext';
-
-const navLinks = [
-  { href: '/dashboard', label: 'Dashboard' },
-  { href: '/players', label: 'Jugadores' },
-  { href: '/teams', label: 'Equipos' },
-  { href: '/coaches', label: 'Entrenadores' },
-  { href: '/matches', label: 'Partidos' },
-];
+import { useRouter } from 'next/router';
 
 const getInitial = (email?: string) => email ? email.charAt(0).toUpperCase() : '?';
 
 const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
+  const router = useRouter();
   // Simulación: si el usuario tuviera foto, sería user.foto_url
   const avatarUrl = (user as any)?.foto_url;
+
+  // Menú para super admin
+  const superAdminLinks = [
+    { href: '/dashboard', label: 'Dashboard' },
+    { href: '/tenants', label: 'Escuelas' },
+    { href: '/invitations', label: 'Invitaciones' },
+    // Puedes agregar más links globales aquí
+  ];
+
+  // Menú normal
+  const navLinks = [
+    { href: '/dashboard', label: 'Dashboard' },
+    { href: '/players', label: 'Jugadores' },
+    { href: '/teams', label: 'Equipos' },
+    { href: '/coaches', label: 'Entrenadores' },
+    { href: '/matches', label: 'Partidos' },
+  ];
+
+  const linksToShow = user?.role === 'super_admin' ? superAdminLinks : navLinks;
 
   return (
     <nav className="w-full bg-gradient-to-r from-emerald-700 via-green-600 to-teal-700 shadow-lg px-4 py-2 flex items-center justify-between sticky top-0 z-50">
@@ -32,7 +45,7 @@ const Navbar: React.FC = () => {
 
       {/* Links */}
       <div className="hidden md:flex gap-6 ml-8">
-        {navLinks.map(link => (
+        {linksToShow.map(link => (
           <Link
             key={link.href}
             href={link.href}
@@ -62,7 +75,7 @@ const Navbar: React.FC = () => {
           <span className="text-emerald-100 text-xs">{user?.role}</span>
         </div>
         <button
-          onClick={logout}
+          onClick={() => { logout(); router.push('/'); }}
           className="ml-2 px-4 py-1 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold shadow hover:scale-105 transition-all focus:outline-none focus:ring-2 focus:ring-white/50"
           aria-label="Cerrar sesión"
         >

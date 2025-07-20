@@ -12,3 +12,14 @@ Plataforma multi-tenant para gestión de escuelas de fútbol.
 
 1. Clona el repositorio
 2. Lee los README de cada módulo para instrucciones específicas
+
+SuperAdmin
+##########
+superadmin@futbolclinic.com
+admin123
+
+Escuela Demo
+------------
+admin@escuelademo.com
+admin123
+3292ecf6-aff2-43a6-995e-1c8c48d3a8a1

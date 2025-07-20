@@ -17,10 +17,15 @@ export const register = async (req: Request, res: Response) => {
 export const login = async (req: Request, res: Response) => {
   try {
     const { email, password, tenantId } = req.body;
-    if (!email || !password || !tenantId) {
+    if (!email || !password) {
       return res.status(400).json({ message: 'Faltan datos para login' });
     }
-    const result = await authService.login(email, password, tenantId);
+    let result;
+    if (!tenantId || tenantId === 'super_admin') {
+      result = await authService.loginSuperAdmin(email, password);
+    } else {
+      result = await authService.login(email, password, tenantId);
+    }
     res.json(result);
   } catch (error: any) {
     res.status(400).json({ message: error.message });

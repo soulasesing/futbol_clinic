@@ -37,6 +37,19 @@ export const login = async (email: string, password: string, tenantId: string) =
   return { jwt: tokenJwt };
 };
 
+export const loginSuperAdmin = async (email: string, password: string) => {
+  const result = await pool.query(
+    `SELECT id, tenant_id, rol, password_hash FROM users WHERE email = $1 AND rol = 'super_admin' AND is_active = TRUE`,
+    [email]
+  );
+  if (result.rowCount === 0) throw new Error('Usuario o contraseña incorrectos');
+  const user = result.rows[0];
+  const valid = await comparePassword(password, user.password_hash);
+  if (!valid) throw new Error('Usuario o contraseña incorrectos');
+  const tokenJwt = jwtUtil.sign({ userId: user.id, tenantId: user.tenant_id, role: user.rol });
+  return { jwt: tokenJwt };
+};
+
 export const forgotPassword = async (email: string, tenantId: string) => {
   // Busca usuario
   const result = await pool.query(

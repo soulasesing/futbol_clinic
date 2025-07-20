@@ -17,8 +17,16 @@ const LandingHero: React.FC = () => (
         Administra jugadores, equipos, entrenadores, partidos y mucho más.
       </p>
       <a
+        href="/login"
+        className="mt-6 px-8 py-3 rounded-full bg-gradient-to-r from-white to-green-100 text-green-700 font-bold text-lg shadow-lg hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-green-700 transition"
+        tabIndex={0}
+        aria-label="Iniciar sesión escuelas"
+      >
+        Iniciar sesión escuelas
+      </a>
+      <a
         href="#contacto"
-        className="mt-6 px-8 py-3 rounded-full bg-white text-green-700 font-bold text-lg shadow-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-green-700 transition"
+        className="mt-3 px-8 py-3 rounded-full bg-white text-green-700 font-bold text-lg shadow-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-green-700 transition"
         tabIndex={0}
         aria-label="Solicita una demo"
       >
