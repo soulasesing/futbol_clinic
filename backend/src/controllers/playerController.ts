@@ -12,6 +12,17 @@ export const getPlayers = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const getPlayerTeams = async (req: AuthRequest, res: Response) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const { id } = req.params;
+    const teams = await playerService.getPlayerTeams(tenantId!, id);
+    res.json(teams);
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
 export const createPlayer = async (req: AuthRequest, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
@@ -25,7 +36,8 @@ export const createPlayer = async (req: AuthRequest, res: Response) => {
 export const updatePlayer = async (req: AuthRequest, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
-    const player = await playerService.updatePlayer(tenantId!, req.params.id, req.body);
+    const { id } = req.params;
+    const player = await playerService.updatePlayer(tenantId!, id, req.body);
     res.json(player);
   } catch (error: any) {
     res.status(400).json({ message: error.message });
@@ -35,8 +47,20 @@ export const updatePlayer = async (req: AuthRequest, res: Response) => {
 export const deletePlayer = async (req: AuthRequest, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
-    await playerService.deletePlayer(tenantId!, req.params.id);
-    res.status(204).send();
+    const { id } = req.params;
+    await playerService.deletePlayer(tenantId!, id);
+    res.json({ message: 'Jugador eliminado' });
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const getPlayerById = async (req: AuthRequest, res: Response) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const { id } = req.params;
+    const player = await playerService.getPlayerById(tenantId!, id);
+    res.json(player);
   } catch (error: any) {
     res.status(400).json({ message: error.message });
   }

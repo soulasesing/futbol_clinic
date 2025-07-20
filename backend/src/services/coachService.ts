@@ -7,22 +7,22 @@ export const getCoaches = async (tenantId: string) => {
 };
 
 export const createCoach = async (tenantId: string, data: any) => {
-  const { nombre, apellido, email, telefono } = data;
+  const { nombre, apellido, email, telefono, foto_url } = data;
   const result = await pool.query(
-    `INSERT INTO coaches (id, tenant_id, nombre, apellido, email, telefono)
-     VALUES ($1, $2, $3, $4, $5, $6)
+    `INSERT INTO coaches (id, tenant_id, nombre, apellido, email, telefono, foto_url)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
      RETURNING *`,
-    [uuidv4(), tenantId, nombre, apellido, email, telefono]
+    [uuidv4(), tenantId, nombre, apellido, email, telefono, foto_url]
   );
   return result.rows[0];
 };
 
 export const updateCoach = async (tenantId: string, id: string, data: any) => {
-  const { nombre, apellido, email, telefono } = data;
+  const { nombre, apellido, email, telefono, foto_url } = data;
   const result = await pool.query(
-    `UPDATE coaches SET nombre = $1, apellido = $2, email = $3, telefono = $4
-     WHERE id = $5 AND tenant_id = $6 RETURNING *`,
-    [nombre, apellido, email, telefono, id, tenantId]
+    `UPDATE coaches SET nombre = $1, apellido = $2, email = $3, telefono = $4, foto_url = $5
+     WHERE id = $6 AND tenant_id = $7 RETURNING *`,
+    [nombre, apellido, email, telefono, foto_url, id, tenantId]
   );
   if (result.rowCount === 0) throw new Error('Entrenador no encontrado');
   return result.rows[0];

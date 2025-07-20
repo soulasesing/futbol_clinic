@@ -7,22 +7,22 @@ export const getTeams = async (tenantId: string) => {
 };
 
 export const createTeam = async (tenantId: string, data: any) => {
-  const { nombre, categoria, entrenador_id } = data;
+  const { nombre, categoria, entrenador_id, descripcion } = data;
   const result = await pool.query(
-    `INSERT INTO teams (id, tenant_id, nombre, categoria, entrenador_id)
-     VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO teams (id, tenant_id, nombre, categoria, entrenador_id, descripcion)
+     VALUES ($1, $2, $3, $4, $5, $6)
      RETURNING *`,
-    [uuidv4(), tenantId, nombre, categoria, entrenador_id]
+    [uuidv4(), tenantId, nombre, categoria, entrenador_id, descripcion]
   );
   return result.rows[0];
 };
 
 export const updateTeam = async (tenantId: string, id: string, data: any) => {
-  const { nombre, categoria, entrenador_id } = data;
+  const { nombre, categoria, entrenador_id, descripcion } = data;
   const result = await pool.query(
-    `UPDATE teams SET nombre = $1, categoria = $2, entrenador_id = $3
-     WHERE id = $4 AND tenant_id = $5 RETURNING *`,
-    [nombre, categoria, entrenador_id, id, tenantId]
+    `UPDATE teams SET nombre = $1, categoria = $2, entrenador_id = $3, descripcion = $4
+     WHERE id = $5 AND tenant_id = $6 RETURNING *`,
+    [nombre, categoria, entrenador_id, descripcion, id, tenantId]
   );
   if (result.rowCount === 0) throw new Error('Equipo no encontrado');
   return result.rows[0];
