@@ -6,6 +6,21 @@ export const getTeams = async (tenantId: string) => {
   return result.rows;
 };
 
+export const getTeamsWithPlayersAndCoach = async (tenantId: string) => {
+  // Equipos
+  const teamsRes = await pool.query('SELECT t.id, t.nombre, t.categoria, t.entrenador_id, c.nombre AS entrenador_nombre, c.apellido AS entrenador_apellido FROM teams t LEFT JOIN coaches c ON t.entrenador_id = c.id WHERE t.tenant_id = $1', [tenantId]);
+  const teams = teamsRes.rows;
+  // Para cada equipo, obtener jugadores
+  for (const team of teams) {
+    const playersRes = await pool.query(
+      `SELECT p.id, p.nombre, p.apellido, p.foto_url FROM player_teams pt INNER JOIN players p ON pt.player_id = p.id WHERE pt.team_id = $1 AND pt.tenant_id = $2`,
+      [team.id, tenantId]
+    );
+    team.jugadores = playersRes.rows;
+  }
+  return teams;
+};
+
 export const createTeam = async (tenantId: string, data: any) => {
   const { nombre, categoria, entrenador_id, descripcion } = data;
   const result = await pool.query(
