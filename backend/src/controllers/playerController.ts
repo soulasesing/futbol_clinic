@@ -64,4 +64,14 @@ export const getPlayerById = async (req: AuthRequest, res: Response) => {
   } catch (error: any) {
     res.status(400).json({ message: error.message });
   }
+};
+
+export const getBirthdays = async (req: any, res: any) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const data = await playerService.getBirthdays(tenantId);
+    res.json(data);
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
 }; 

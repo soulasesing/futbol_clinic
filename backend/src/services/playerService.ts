@@ -76,4 +76,31 @@ export const getPlayerById = async (tenantId: string, id: string) => {
   const result = await pool.query('SELECT * FROM players WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
   if (result.rowCount === 0) throw new Error('Jugador no encontrado');
   return result.rows[0];
+};
+
+export const getBirthdays = async (tenantId: string) => {
+  // Cumpleaños del mes
+  const monthRes = await pool.query(
+    `SELECT id, nombre, apellido, foto_url, fecha_nacimiento, categoria
+     FROM players
+     WHERE tenant_id = $1 AND EXTRACT(MONTH FROM fecha_nacimiento) = EXTRACT(MONTH FROM CURRENT_DATE)
+     ORDER BY EXTRACT(DAY FROM fecha_nacimiento)`,
+    [tenantId]
+  );
+  // Próximos cumpleaños (próximos 15 días)
+  const upcomingRes = await pool.query(
+    `SELECT id, nombre, apellido, foto_url, fecha_nacimiento, categoria
+     FROM players
+     WHERE tenant_id = $1 AND (
+       (EXTRACT(DOY FROM fecha_nacimiento) >= EXTRACT(DOY FROM CURRENT_DATE) AND EXTRACT(DOY FROM fecha_nacimiento) <= EXTRACT(DOY FROM CURRENT_DATE) + 15)
+       OR
+       (EXTRACT(DOY FROM fecha_nacimiento) < EXTRACT(DOY FROM CURRENT_DATE) AND EXTRACT(DOY FROM fecha_nacimiento) + 365 <= EXTRACT(DOY FROM CURRENT_DATE) + 15)
+     )
+     ORDER BY EXTRACT(DOY FROM fecha_nacimiento)`,
+    [tenantId]
+  );
+  return {
+    mes: monthRes.rows,
+    proximos: upcomingRes.rows.filter(p => !monthRes.rows.some(m => m.id === p.id)),
+  };
 }; 

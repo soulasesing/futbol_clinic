@@ -9,6 +9,7 @@ router.use(requireAuth, setTenant);
 
 router.get('/', playerController.getPlayers);
 router.post('/', playerController.createPlayer);
+router.get('/birthdays', playerController.getBirthdays);
 router.get('/:id/teams', playerController.getPlayerTeams);
 router.get('/:id', playerController.getPlayerById);
 router.put('/:id', playerController.updatePlayer);

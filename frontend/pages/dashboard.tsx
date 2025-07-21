@@ -18,6 +18,7 @@ const Dashboard: React.FC = () => {
   const router = useRouter();
   const [teams, setTeams] = useState<TeamCard[]>([]);
   const [flippedId, setFlippedId] = useState<string | null>(null);
+  const [birthdays, setBirthdays] = useState<{ mes: any[]; proximos: any[] }>({ mes: [], proximos: [] });
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -30,6 +31,14 @@ const Dashboard: React.FC = () => {
       fetch('/api/teams/with-players', { headers: { Authorization: `Bearer ${localStorage.getItem('jwt')}` } })
         .then(res => res.json())
         .then(data => setTeams(Array.isArray(data) ? data : []));
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user?.role === 'admin') {
+      fetch('/api/players/birthdays', { headers: { Authorization: `Bearer ${localStorage.getItem('jwt')}` } })
+        .then(res => res.json())
+        .then(data => setBirthdays(data));
     }
   }, [user]);
 
@@ -60,6 +69,55 @@ const Dashboard: React.FC = () => {
           ) : (
             <>
               <h1 className="text-3xl font-black bg-gradient-to-r from-emerald-700 via-green-600 to-teal-700 bg-clip-text text-transparent drop-shadow mb-8">Tus Equipos / Categorías</h1>
+              {/* Widget de cumpleaños */}
+              <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white rounded-2xl shadow-xl p-6 border border-emerald-100">
+                  <h2 className="text-xl font-bold text-emerald-700 flex items-center gap-2 mb-4">🎂 Cumpleaños del mes</h2>
+                  {(birthdays.mes?.length ?? 0) === 0 ? (
+                    <div className="text-gray-400">Nadie cumple años este mes.</div>
+                  ) : (
+                    <div className="flex flex-wrap gap-4">
+                      {birthdays.mes.map(j => (
+                        <div key={j.id} className="flex flex-col items-center bg-emerald-50 rounded-xl p-3 w-32 shadow hover:scale-105 transition">
+                          {j.foto_url ? (
+                            <img src={j.foto_url} alt="Foto" className="w-12 h-12 rounded-full object-cover border mb-2" />
+                          ) : (
+                            <span className="w-12 h-12 flex items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 text-white font-bold text-lg shadow mb-2">
+                              {j.nombre.charAt(0)}
+                            </span>
+                          )}
+                          <div className="text-sm font-bold text-emerald-700 text-center">{j.nombre} {j.apellido}</div>
+                          <div className="text-xs text-gray-500 text-center">{j.categoria}</div>
+                          <div className="text-xs text-emerald-600 mt-1">{new Date(j.fecha_nacimiento).toLocaleDateString(undefined, { day: '2-digit', month: 'short' })}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="bg-white rounded-2xl shadow-xl p-6 border border-emerald-100">
+                  <h2 className="text-xl font-bold text-emerald-700 flex items-center gap-2 mb-4">🎉 Próximos cumpleaños</h2>
+                  {(birthdays.proximos?.length ?? 0) === 0 ? (
+                    <div className="text-gray-400">No hay próximos cumpleaños.</div>
+                  ) : (
+                    <div className="flex flex-wrap gap-4">
+                      {birthdays.proximos.map(j => (
+                        <div key={j.id} className="flex flex-col items-center bg-teal-50 rounded-xl p-3 w-32 shadow hover:scale-105 transition">
+                          {j.foto_url ? (
+                            <img src={j.foto_url} alt="Foto" className="w-12 h-12 rounded-full object-cover border mb-2" />
+                          ) : (
+                            <span className="w-12 h-12 flex items-center justify-center rounded-full bg-gradient-to-br from-teal-400 to-emerald-500 text-white font-bold text-lg shadow mb-2">
+                              {j.nombre.charAt(0)}
+                            </span>
+                          )}
+                          <div className="text-sm font-bold text-emerald-700 text-center">{j.nombre} {j.apellido}</div>
+                          <div className="text-xs text-gray-500 text-center">{j.categoria}</div>
+                          <div className="text-xs text-teal-600 mt-1">{new Date(j.fecha_nacimiento).toLocaleDateString(undefined, { day: '2-digit', month: 'short' })}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                 {teams.map(team => (
                   <div
