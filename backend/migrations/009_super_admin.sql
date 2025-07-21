@@ -8,7 +8,7 @@ VALUES (
   NULL,
   'Super Admin',
   'superadmin@futbolclinic.com',
-  '$2b$10$2b2b2b2b2b2b2b2b2b2b2uQwQwQwQwQwQwQwQwQwQwQwQwQwQwQwQwQwQwQw', -- Cambia por un hash real
+  '$2b$10$zt.B/1cZ2Y4I/RBRdCFlr.I5isn5r/CLOMrIxRGv4Wkzy545i48YW', -- Cambia por un hash real
   'super_admin',
   TRUE
 ); 

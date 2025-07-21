@@ -26,9 +26,12 @@ const Navbar: React.FC = () => {
     { href: '/teams', label: 'Equipos' },
     { href: '/coaches', label: 'Entrenadores' },
     { href: '/matches', label: 'Partidos' },
+    { href: '/configuracion', label: 'Configurar escuela', onlyAdmin: true },
   ];
 
-  const linksToShow = user?.role === 'super_admin' ? superAdminLinks : navLinks;
+  const linksToShow = user?.role === 'super_admin'
+    ? superAdminLinks
+    : navLinks.filter(link => !link.onlyAdmin || user?.role === 'admin');
 
   return (
     <nav className="w-full bg-gradient-to-r from-emerald-700 via-green-600 to-teal-700 shadow-lg px-4 py-2 flex items-center justify-between sticky top-0 z-50">

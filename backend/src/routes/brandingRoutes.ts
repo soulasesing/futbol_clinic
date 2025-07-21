@@ -7,8 +7,6 @@ const router = Router();
 
 router.use(requireAdminAuth, setTenant);
 
-router.post('/logo', brandingController.uploadLogo);
-router.post('/banner', brandingController.uploadBanner);
-router.put('/colors', brandingController.updateColors);
+router.put('/', brandingController.updateBranding);
 
 export default router; 

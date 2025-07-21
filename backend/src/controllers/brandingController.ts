@@ -2,34 +2,17 @@ import { Request, Response } from 'express';
 import * as brandingService from '../services/brandingService';
 import { AuthRequest } from '../middlewares/authMiddleware';
 
-export const uploadLogo = async (req: AuthRequest, res: Response) => {
+export const updateBranding = async (req: AuthRequest, res: Response) => {
   try {
-    // Aquí deberías manejar el archivo (req.file), por ahora solo URL
-    const { logo_url } = req.body;
+    const {
+      logo_url, banner_url, primary_color, secondary_color,
+      description, slogan, telefono, email, facebook_url, instagram_url, twitter_url, youtube_url, tiktok_url, foundation_date
+    } = req.body;
     const tenantId = req.user?.tenantId;
-    const result = await brandingService.updateLogo(tenantId!, logo_url);
-    res.json(result);
-  } catch (error: any) {
-    res.status(400).json({ message: error.message });
-  }
-};
-
-export const uploadBanner = async (req: AuthRequest, res: Response) => {
-  try {
-    const { banner_url } = req.body;
-    const tenantId = req.user?.tenantId;
-    const result = await brandingService.updateBanner(tenantId!, banner_url);
-    res.json(result);
-  } catch (error: any) {
-    res.status(400).json({ message: error.message });
-  }
-};
-
-export const updateColors = async (req: AuthRequest, res: Response) => {
-  try {
-    const { primary_color, secondary_color } = req.body;
-    const tenantId = req.user?.tenantId;
-    const result = await brandingService.updateColors(tenantId!, primary_color, secondary_color);
+    const result = await brandingService.updateBranding(tenantId!, {
+      logo_url, banner_url, primary_color, secondary_color,
+      description, slogan, telefono, email, facebook_url, instagram_url, twitter_url, youtube_url, tiktok_url, foundation_date
+    });
     res.json(result);
   } catch (error: any) {
     res.status(400).json({ message: error.message });
