@@ -11,6 +11,13 @@ interface Player {
   foto_url?: string;
   document_url?: string;
   teams?: Team[];
+  correo_jugador?: string;
+  padre_nombre?: string;
+  padre_apellido?: string;
+  padre_email?: string;
+  madre_nombre?: string;
+  madre_apellido?: string;
+  madre_email?: string;
 }
 
 interface Team {
@@ -293,7 +300,7 @@ const PlayersPage: React.FC = () => {
           {/* Formulario modal */}
           {showForm && (
             <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-              <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md relative">
+              <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md relative max-h-[90vh] overflow-y-auto">
                 <button
                   onClick={() => { setShowForm(false); setEditPlayer(null); setPreview(null); }}
                   className="absolute top-2 right-2 text-emerald-700 hover:text-red-500 text-2xl font-bold"
@@ -314,6 +321,13 @@ const PlayersPage: React.FC = () => {
                     const docFile = docInputRef.current?.files?.[0];
                     const teamSelect = form.elements.namedItem('team_ids') as HTMLSelectElement;
                     const teamIds = Array.from(teamSelect.selectedOptions).map(opt => opt.value);
+                    const correo_jugador = (form.elements.namedItem('correo_jugador') as HTMLInputElement).value;
+                    const padre_nombre = (form.elements.namedItem('padre_nombre') as HTMLInputElement).value;
+                    const padre_apellido = (form.elements.namedItem('padre_apellido') as HTMLInputElement).value;
+                    const padre_email = (form.elements.namedItem('padre_email') as HTMLInputElement).value;
+                    const madre_nombre = (form.elements.namedItem('madre_nombre') as HTMLInputElement).value;
+                    const madre_apellido = (form.elements.namedItem('madre_apellido') as HTMLInputElement).value;
+                    const madre_email = (form.elements.namedItem('madre_email') as HTMLInputElement).value;
                     await handleSave({
                       id: editPlayer?.id || '',
                       nombre,
@@ -322,6 +336,13 @@ const PlayersPage: React.FC = () => {
                       fecha_nacimiento,
                       foto_url: editPlayer?.foto_url,
                       document_url: editPlayer?.document_url,
+                      correo_jugador,
+                      padre_nombre,
+                      padre_apellido,
+                      padre_email,
+                      madre_nombre,
+                      madre_apellido,
+                      madre_email,
                     }, file, docFile, teamIds);
                   }}
                   className="flex flex-col gap-4"
@@ -366,6 +387,57 @@ const PlayersPage: React.FC = () => {
                     required
                     className="rounded-lg border border-emerald-200 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400"
                   />
+                  <input
+                    name="correo_jugador"
+                    defaultValue={editPlayer?.correo_jugador || ''}
+                    placeholder="Correo del jugador (opcional)"
+                    type="email"
+                    className="rounded-lg border border-emerald-200 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                  />
+                  <div className="flex flex-col gap-2 border-t pt-4 mt-2">
+                    <span className="font-semibold text-emerald-700">Datos del padre</span>
+                    <input
+                      name="padre_nombre"
+                      defaultValue={editPlayer?.padre_nombre || ''}
+                      placeholder="Nombre del padre"
+                      className="rounded-lg border border-emerald-200 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                    />
+                    <input
+                      name="padre_apellido"
+                      defaultValue={editPlayer?.padre_apellido || ''}
+                      placeholder="Apellido del padre"
+                      className="rounded-lg border border-emerald-200 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                    />
+                    <input
+                      name="padre_email"
+                      defaultValue={editPlayer?.padre_email || ''}
+                      placeholder="Correo del padre"
+                      type="email"
+                      className="rounded-lg border border-emerald-200 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2 border-t pt-4 mt-2">
+                    <span className="font-semibold text-emerald-700">Datos de la madre</span>
+                    <input
+                      name="madre_nombre"
+                      defaultValue={editPlayer?.madre_nombre || ''}
+                      placeholder="Nombre de la madre"
+                      className="rounded-lg border border-emerald-200 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                    />
+                    <input
+                      name="madre_apellido"
+                      defaultValue={editPlayer?.madre_apellido || ''}
+                      placeholder="Apellido de la madre"
+                      className="rounded-lg border border-emerald-200 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                    />
+                    <input
+                      name="madre_email"
+                      defaultValue={editPlayer?.madre_email || ''}
+                      placeholder="Correo de la madre"
+                      type="email"
+                      className="rounded-lg border border-emerald-200 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                    />
+                  </div>
                   {/* Subida de foto */}
                   <div className="flex flex-col gap-2">
                     <label className="font-medium text-gray-700">Foto (opcional)</label>
