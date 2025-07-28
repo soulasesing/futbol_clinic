@@ -25,6 +25,7 @@ const Navbar: React.FC = () => {
     { href: '/players', label: 'Jugadores' },
     { href: '/teams', label: 'Equipos' },
     { href: '/coaches', label: 'Entrenadores' },
+    { href: '/entrenamientos', label: 'Entrenamientos' },
     { href: '/matches', label: 'Partidos' },
     { href: '/configuracion', label: 'Configurar escuela', onlyAdmin: true },
   ];
