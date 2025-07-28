@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import Navbar from '../components/Navbar';
+import PlayerCard from '../components/PlayerCard';
 import { useAuth } from '../contexts/AuthContext';
 
 interface Player {
@@ -8,6 +9,7 @@ interface Player {
   apellido: string;
   cedula: string;
   fecha_nacimiento: string;
+  categoria: string;
   foto_url?: string;
   document_url?: string;
   teams?: Team[];
@@ -15,9 +17,12 @@ interface Player {
   padre_nombre?: string;
   padre_apellido?: string;
   padre_email?: string;
+  padre_telefono?: string;
   madre_nombre?: string;
   madre_apellido?: string;
   madre_email?: string;
+  madre_telefono?: string;
+  created_at: string;
 }
 
 interface Team {
@@ -58,6 +63,7 @@ const PlayersPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [showForm, setShowForm] = useState(false);
   const [editPlayer, setEditPlayer] = useState<Player | null>(null);
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [formLoading, setFormLoading] = useState(false);
@@ -206,13 +212,16 @@ const PlayersPage: React.FC = () => {
                     <th className="p-3 text-left">Cédula</th>
                     <th className="p-3 text-left">Categoría(s)</th>
                     <th className="p-3 text-left">Edad</th>
-                    <th className="p-3 text-left">Documento</th>
                     <th className="p-3 text-left">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {paginated.map(player => (
-                    <tr key={player.id} className="border-b last:border-0 hover:bg-emerald-50/40">
+                    <tr 
+                      key={player.id} 
+                      className="border-b last:border-0 hover:bg-emerald-50/40 cursor-pointer"
+                      onClick={() => setSelectedPlayer(player)}
+                    >
                       <td className="p-2">
                         {player.foto_url ? (
                           <img src={player.foto_url} alt="Foto" className="w-10 h-10 rounded-full object-cover border" />
@@ -239,39 +248,12 @@ const PlayersPage: React.FC = () => {
                         )}
                       </td>
                       <td className="p-2">{calcularEdad(player.fecha_nacimiento)}</td>
-                      {/* Documento de identidad */}
-                      <td className="p-2 text-center">
-                        {player.document_url ? (
-                          <button
-                            tabIndex={0}
-                            aria-label="Ver documento de identidad"
-                            onClick={() => {
-                              setSelectedDocUrl(player.document_url!);
-                              setShowDocModal(true);
-                            }}
-                            onKeyDown={e => {
-                              if (e.key === 'Enter' || e.key === ' ') {
-                                setSelectedDocUrl(player.document_url!);
-                                setShowDocModal(true);
-                              }
-                            }}
-                            className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-emerald-100 hover:bg-emerald-200 focus:outline-none focus:ring-2 focus:ring-emerald-400 text-emerald-700 text-lg cursor-pointer transition-all"
-                          >
-                            👁️
-                          </button>
-                        ) : (
-                          <span className="text-gray-300">—</span>
-                        )}
-                      </td>
-                      <td className="p-2 flex gap-2">
+                      <td className="p-2">
                         <button
-                          onClick={() => { setEditPlayer(player); setShowForm(true); setPreview(player.foto_url || null); setDocPreview(player.document_url || null); }}
-                          className="px-3 py-1 rounded bg-emerald-100 text-emerald-700 font-bold hover:bg-emerald-200"
-                        >
-                          Editar
-                        </button>
-                        <button
-                          onClick={() => handleDelete(player.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(player.id);
+                          }}
                           className="px-3 py-1 rounded bg-red-100 text-red-700 font-bold hover:bg-red-200"
                         >
                           Eliminar
@@ -325,24 +307,30 @@ const PlayersPage: React.FC = () => {
                     const padre_nombre = (form.elements.namedItem('padre_nombre') as HTMLInputElement).value;
                     const padre_apellido = (form.elements.namedItem('padre_apellido') as HTMLInputElement).value;
                     const padre_email = (form.elements.namedItem('padre_email') as HTMLInputElement).value;
+                    const padre_telefono = (form.elements.namedItem('padre_telefono') as HTMLInputElement).value;
                     const madre_nombre = (form.elements.namedItem('madre_nombre') as HTMLInputElement).value;
                     const madre_apellido = (form.elements.namedItem('madre_apellido') as HTMLInputElement).value;
                     const madre_email = (form.elements.namedItem('madre_email') as HTMLInputElement).value;
+                    const madre_telefono = (form.elements.namedItem('madre_telefono') as HTMLInputElement).value;
                     await handleSave({
                       id: editPlayer?.id || '',
                       nombre,
                       apellido,
                       cedula,
                       fecha_nacimiento,
+                      categoria: editPlayer?.categoria || 'Sin categoría',
                       foto_url: editPlayer?.foto_url,
                       document_url: editPlayer?.document_url,
                       correo_jugador,
                       padre_nombre,
                       padre_apellido,
                       padre_email,
+                      padre_telefono,
                       madre_nombre,
                       madre_apellido,
                       madre_email,
+                      madre_telefono,
+                      created_at: editPlayer?.created_at || new Date().toISOString()
                     }, file, docFile, teamIds);
                   }}
                   className="flex flex-col gap-4"
@@ -415,6 +403,13 @@ const PlayersPage: React.FC = () => {
                       type="email"
                       className="rounded-lg border border-emerald-200 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400"
                     />
+                    <input
+                      name="padre_telefono"
+                      defaultValue={editPlayer?.padre_telefono || ''}
+                      placeholder="Teléfono del padre"
+                      type="tel"
+                      className="rounded-lg border border-emerald-200 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                    />
                   </div>
                   <div className="flex flex-col gap-2 border-t pt-4 mt-2">
                     <span className="font-semibold text-emerald-700">Datos de la madre</span>
@@ -435,6 +430,13 @@ const PlayersPage: React.FC = () => {
                       defaultValue={editPlayer?.madre_email || ''}
                       placeholder="Correo de la madre"
                       type="email"
+                      className="rounded-lg border border-emerald-200 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                    />
+                    <input
+                      name="madre_telefono"
+                      defaultValue={editPlayer?.madre_telefono || ''}
+                      placeholder="Teléfono de la madre"
+                      type="tel"
                       className="rounded-lg border border-emerald-200 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400"
                     />
                   </div>
@@ -521,6 +523,22 @@ const PlayersPage: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Player Card Modal */}
+      {selectedPlayer && (
+        <PlayerCard 
+          player={selectedPlayer} 
+          onClose={() => setSelectedPlayer(null)}
+          onEdit={(player) => {
+            setEditPlayer(player);
+            setShowForm(true);
+            setPreview(player.foto_url || null);
+            setDocPreview(player.document_url || null);
+            setSelectedPlayer(null);
+          }}
+          onRefresh={fetchPlayers}
+        />
       )}
     </>
   );

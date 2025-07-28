@@ -29,17 +29,29 @@ export const setPlayerTeams = async (tenantId: string, playerId: string, teamIds
 };
 
 export const createPlayer = async (tenantId: string, data: any) => {
-  const { nombre, apellido, cedula, fecha_nacimiento, foto_url, document_url, team_ids, correo_jugador, padre_nombre, padre_apellido, padre_email, madre_nombre, madre_apellido, madre_email } = data;
+  const { 
+    nombre, apellido, cedula, fecha_nacimiento, foto_url, document_url, 
+    team_ids, correo_jugador, padre_nombre, padre_apellido, padre_email, 
+    padre_telefono, madre_nombre, madre_apellido, madre_email, madre_telefono 
+  } = data;
   let categoria = null;
   if (Array.isArray(team_ids) && team_ids.length > 0) {
     const teamRes = await pool.query('SELECT nombre FROM teams WHERE id = $1', [team_ids[0]]);
     categoria = teamRes.rows[0]?.nombre || null;
   }
   const result = await pool.query(
-    `INSERT INTO players (id, tenant_id, nombre, apellido, cedula, fecha_nacimiento, categoria, foto_url, document_url, correo_jugador, padre_nombre, padre_apellido, padre_email, madre_nombre, madre_apellido, madre_email)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-     RETURNING *`,
-    [uuidv4(), tenantId, nombre, apellido, cedula, fecha_nacimiento, categoria, foto_url, document_url, correo_jugador, padre_nombre, padre_apellido, padre_email, madre_nombre, madre_apellido, madre_email]
+    `INSERT INTO players (
+      id, tenant_id, nombre, apellido, cedula, fecha_nacimiento, categoria, 
+      foto_url, document_url, correo_jugador, padre_nombre, padre_apellido, 
+      padre_email, padre_telefono, madre_nombre, madre_apellido, madre_email, madre_telefono
+    )
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+    RETURNING *`,
+    [
+      uuidv4(), tenantId, nombre, apellido, cedula, fecha_nacimiento, categoria,
+      foto_url, document_url, correo_jugador, padre_nombre, padre_apellido,
+      padre_email, padre_telefono, madre_nombre, madre_apellido, madre_email, madre_telefono
+    ]
   );
   const player = result.rows[0];
   if (Array.isArray(team_ids) && team_ids.length > 0) {
@@ -49,16 +61,29 @@ export const createPlayer = async (tenantId: string, data: any) => {
 };
 
 export const updatePlayer = async (tenantId: string, id: string, data: any) => {
-  const { nombre, apellido, cedula, fecha_nacimiento, foto_url, document_url, team_ids, correo_jugador, padre_nombre, padre_apellido, padre_email, madre_nombre, madre_apellido, madre_email } = data;
+  const { 
+    nombre, apellido, cedula, fecha_nacimiento, foto_url, document_url, 
+    team_ids, correo_jugador, padre_nombre, padre_apellido, padre_email, 
+    padre_telefono, madre_nombre, madre_apellido, madre_email, madre_telefono 
+  } = data;
   let categoria = null;
   if (Array.isArray(team_ids) && team_ids.length > 0) {
     const teamRes = await pool.query('SELECT nombre FROM teams WHERE id = $1', [team_ids[0]]);
     categoria = teamRes.rows[0]?.nombre || null;
   }
   const result = await pool.query(
-    `UPDATE players SET nombre = $1, apellido = $2, cedula = $3, fecha_nacimiento = $4, categoria = $5, foto_url = $6, document_url = $7, correo_jugador = $8, padre_nombre = $9, padre_apellido = $10, padre_email = $11, madre_nombre = $12, madre_apellido = $13, madre_email = $14
-     WHERE id = $15 AND tenant_id = $16 RETURNING *`,
-    [nombre, apellido, cedula, fecha_nacimiento, categoria, foto_url, document_url, correo_jugador, padre_nombre, padre_apellido, padre_email, madre_nombre, madre_apellido, madre_email, id, tenantId]
+    `UPDATE players SET 
+      nombre = $1, apellido = $2, cedula = $3, fecha_nacimiento = $4, 
+      categoria = $5, foto_url = $6, document_url = $7, correo_jugador = $8, 
+      padre_nombre = $9, padre_apellido = $10, padre_email = $11, padre_telefono = $12,
+      madre_nombre = $13, madre_apellido = $14, madre_email = $15, madre_telefono = $16
+    WHERE id = $17 AND tenant_id = $18 RETURNING *`,
+    [
+      nombre, apellido, cedula, fecha_nacimiento, categoria, foto_url, 
+      document_url, correo_jugador, padre_nombre, padre_apellido, padre_email, 
+      padre_telefono, madre_nombre, madre_apellido, madre_email, madre_telefono,
+      id, tenantId
+    ]
   );
   if (result.rowCount === 0) throw new Error('Jugador no encontrado');
   if (Array.isArray(team_ids)) {

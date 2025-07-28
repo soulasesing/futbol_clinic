@@ -17,6 +17,7 @@ import uploadRoutes from './routes/uploadRoutes';
 import categoryRoutes from './routes/categoryRoutes';
 import tenantRoutes from './routes/tenantRoutes';
 import path from 'path';
+import physicalTestRoutes from './routes/physicalTestRoutes';
 
 dotenv.config();
 
@@ -39,6 +40,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/branding', brandingRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/tenants', tenantRoutes);
+app.use('/api/physical-tests', physicalTestRoutes);
 app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
 app.use('/api/upload', uploadRoutes);
 
