@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Navbar from '../components/Navbar';
 import { useAuth } from '../contexts/AuthContext';
+import ConfirmDialog from '../components/ConfirmDialog';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -22,10 +23,17 @@ interface Training {
   hora_fin: string;
   lugar: string;
   descripcion: string;
-  dia_semana?: string;
   es_recurrente: boolean;
+  recurrence_type: 'none' | 'weekly' | 'biweekly' | 'monthly';
+  recurrence_days: string[];
+  recurrence_end_date: string;
+  recurrence_interval: number;
   color: string;
   estado: string;
+  is_cancelled?: boolean;
+  is_template?: boolean;
+  instance_date?: string;
+  dia_semana?: string; // Mantener para compatibilidad
 }
 
 const TrainingsPage: React.FC = () => {
@@ -36,7 +44,21 @@ const TrainingsPage: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTraining, setSelectedTraining] = useState<Training | undefined>(undefined);
   const [loading, setLoading] = useState(true);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type: 'warning' | 'danger' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    type: 'warning'
+  });
   const [viewMode, setViewMode] = useState('timeGridWeek');
+  const [calendarRange, setCalendarRange] = useState({ start: '', end: '' });
 
   // Cargar equipos y entrenamientos
   useEffect(() => {
@@ -46,7 +68,9 @@ const TrainingsPage: React.FC = () => {
       try {
         const [teamsRes, trainingsRes] = await Promise.all([
           fetch('/api/teams', { headers: { Authorization: `Bearer ${jwt}` } }),
-          fetch('/api/trainings', { headers: { Authorization: `Bearer ${jwt}` } })
+          fetch(`/api/trainings${calendarRange.start && calendarRange.end ? `?startDate=${calendarRange.start}&endDate=${calendarRange.end}` : ''}`, { 
+            headers: { Authorization: `Bearer ${jwt}` } 
+          })
         ]);
 
         if (!teamsRes.ok || !trainingsRes.ok) {
@@ -56,7 +80,8 @@ const TrainingsPage: React.FC = () => {
         const teamsData = await teamsRes.json();
         const trainingsData = await trainingsRes.json();
 
-        console.log('Entrenamientos cargados:', trainingsData);
+        console.log('Entrenamientos cargados:', trainingsData.length, 'entrenamientos');
+        console.log('Rango solicitado:', calendarRange.start, 'a', calendarRange.end);
 
         setTeams(Array.isArray(teamsData) ? teamsData : []);
         setTrainings(Array.isArray(trainingsData) ? trainingsData : []);
@@ -68,12 +93,21 @@ const TrainingsPage: React.FC = () => {
     };
 
     fetchData();
-  }, [jwt]);
+  }, [jwt, calendarRange]);
+
+  // Actualizar rango cuando cambia la vista del calendario
+  const handleDatesSet = (dateInfo: any) => {
+    const start = dateInfo.start.toISOString().split('T')[0];
+    const end = dateInfo.end.toISOString().split('T')[0];
+    
+    console.log('Calendario cambió vista:', start, 'a', end);
+    setCalendarRange({ start, end });
+  };
 
   // Convertir entrenamientos al formato del calendario
   const calendarEvents = trainings.map(training => {
     const team = teams.find(t => t.id === training.equipo_id);
-    const eventDate = training.fecha.split('T')[0];
+    const eventDate = training.instance_date || training.fecha.split('T')[0];
 
     // Colores que siguen el tema de la app
     const colors = [
@@ -87,42 +121,204 @@ const TrainingsPage: React.FC = () => {
       { bg: '#22c55e', border: '#16a34a', text: '#ffffff' }  // Green
     ];
 
-    const colorIndex = Math.abs(training.id.split('').reduce((a, b) => a + b.charCodeAt(0), 0)) % colors.length;
-    const selectedColor = colors[colorIndex];
+    // Si está cancelado, usar color gris
+    const isCancelled = training.is_cancelled || training.estado === 'cancelado';
+    let selectedColor;
+    
+    if (isCancelled) {
+      selectedColor = { bg: '#6b7280', border: '#4b5563', text: '#ffffff' };
+    } else {
+      const colorIndex = Math.abs(training.id.split('').reduce((a, b) => a + b.charCodeAt(0), 0)) % colors.length;
+      selectedColor = colors[colorIndex];
+    }
+
+    const title = isCancelled 
+      ? `[CANCELADO] ${team?.nombre || 'Equipo'} - ${training.lugar}`
+      : `${team?.nombre || 'Equipo'} - ${training.lugar}`;
 
     return {
       id: training.id,
-      title: `${team?.nombre || 'Equipo'} - ${training.lugar}`,
+      title,
       start: `${eventDate}T${training.hora_inicio}`,
       end: `${eventDate}T${training.hora_fin}`,
       backgroundColor: selectedColor.bg,
       borderColor: selectedColor.border,
       textColor: selectedColor.text,
       extendedProps: {
-        ...training,
-        teamName: team?.nombre,
-        categoria: team?.categoria
+        training,
+        team,
+        isCancelled,
+        isTemplate: training.is_template || false
       }
     };
   });
 
-  const handleDateClick = (arg: any) => {
-    setSelectedDate(arg.date);
+  // Función para refrescar datos del rango actual
+  const refreshData = () => {
+    setLoading(true);
+    // Trigger useEffect recargando el rango
+    setCalendarRange(prev => ({ ...prev }));
+  };
+
+
+
+    // Manejar click en evento del calendario
+  const handleEventClick = (clickInfo: any) => {
+    const training = clickInfo.event.extendedProps.training;
+    
+    // Mostrar menú contextual
+    const menu = document.createElement('div');
+    menu.className = 'bg-white rounded-lg shadow-xl p-2 absolute z-50';
+    menu.style.left = `${clickInfo.jsEvent.pageX}px`;
+    menu.style.top = `${clickInfo.jsEvent.pageY}px`;
+
+    // Función para cerrar el menú de forma segura
+    const closeMenu = () => {
+      if (document.body.contains(menu)) {
+        document.body.removeChild(menu);
+      }
+    };
+
+    // Botones del menú
+    const editButton = document.createElement('button');
+    editButton.className = 'w-full text-left px-4 py-2 hover:bg-gray-100 rounded';
+    editButton.innerText = 'Editar';
+    editButton.onclick = () => {
+      setSelectedTraining(training);
+      setShowForm(true);
+      closeMenu();
+    };
+
+    const deleteButton = document.createElement('button');
+    deleteButton.className = 'w-full text-left px-4 py-2 hover:bg-gray-100 rounded text-red-600';
+    deleteButton.innerText = training.es_recurrente ? 'Eliminar este y futuros' : 'Eliminar';
+    deleteButton.onclick = () => {
+      setConfirmDialog({
+        isOpen: true,
+        title: training.es_recurrente ? 'Eliminar entrenamientos recurrentes' : 'Eliminar entrenamiento',
+        message: training.es_recurrente 
+          ? '¿Deseas eliminar este entrenamiento y todos los futuros?' 
+          : '¿Deseas eliminar este entrenamiento?',
+        type: 'danger',
+        onConfirm: async () => {
+          try {
+            const response = await fetch(`/api/trainings/${training.id}?deleteAll=${training.es_recurrente}`, {
+              method: 'DELETE',
+              headers: { Authorization: `Bearer ${jwt}` }
+            });
+
+            if (!response.ok) throw new Error('Error al eliminar');
+            
+            refreshData();
+            setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+          } catch (error) {
+            console.error('Error:', error);
+            alert('Error al eliminar el entrenamiento');
+          }
+        }
+      });
+      closeMenu();
+    };
+
+    if (training.es_recurrente) {
+      const deleteOneButton = document.createElement('button');
+      deleteOneButton.className = 'w-full text-left px-4 py-2 hover:bg-gray-100 rounded text-red-600';
+      deleteOneButton.innerText = 'Eliminar solo este';
+      deleteOneButton.onclick = () => {
+        setConfirmDialog({
+          isOpen: true,
+          title: 'Eliminar entrenamiento',
+          message: '¿Deseas eliminar solo este entrenamiento?',
+          type: 'danger',
+          onConfirm: async () => {
+            try {
+              const response = await fetch(`/api/trainings/${training.id}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${jwt}` }
+              });
+
+              if (!response.ok) throw new Error('Error al eliminar');
+              
+              refreshData();
+              setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+            } catch (error) {
+              console.error('Error:', error);
+              alert('Error al eliminar el entrenamiento');
+            }
+          }
+        });
+        closeMenu();
+      };
+      menu.appendChild(deleteOneButton);
+    }
+
+    menu.appendChild(editButton);
+    menu.appendChild(deleteButton);
+
+    // Agregar menú al body y manejador para cerrarlo
+    document.body.appendChild(menu);
+
+    // Manejador de clic fuera del menú
+    const handleClickOutside = (e: MouseEvent) => {
+      if (!menu.contains(e.target as Node)) {
+        closeMenu();
+        document.removeEventListener('click', handleClickOutside);
+      }
+    };
+
+    // Agregar el manejador después de un pequeño delay para evitar que se active inmediatamente
+    setTimeout(() => {
+      document.addEventListener('click', handleClickOutside);
+    }, 100);
+  };
+
+  // Manejar click en fecha del calendario
+  const handleDateClick = (selectInfo: any) => {
+    setSelectedDate(selectInfo.date);
+    setSelectedTraining(undefined);
     setShowForm(true);
   };
 
-  const handleEventClick = (arg: any) => {
-    const training = trainings.find(t => t.id === arg.event.id);
-    if (training) {
-      setSelectedTraining(training);
-      setShowForm(true);
+  // Cancelar instancia específica
+  const handleCancelInstance = async (trainingId: string) => {
+    if (!confirm('¿Estás seguro de que quieres cancelar este entrenamiento específico?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/trainings/${trainingId}/cancel`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${jwt}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al cancelar entrenamiento');
+      }
+
+      refreshData();
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error al cancelar el entrenamiento');
     }
   };
+
+
 
   if (!isAuthenticated) return null;
 
   return (
     <>
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+        type={confirmDialog.type}
+      />
       <Navbar />
       <main className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 p-4 lg:p-8">
         <div className="max-w-7xl mx-auto">
@@ -140,19 +336,21 @@ const TrainingsPage: React.FC = () => {
               </div>
 
               {/* Action Button */}
-              <button
-                onClick={() => {
-                  setSelectedTraining(undefined);
-                  setSelectedDate(new Date());
-                  setShowForm(true);
-                }}
-                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 hover:-translate-y-0.5"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Nuevo Entrenamiento
-              </button>
+              <div className="flex justify-end">
+                <button
+                  onClick={() => {
+                    setSelectedTraining(undefined);
+                    setSelectedDate(new Date());
+                    setShowForm(true);
+                  }}
+                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 hover:-translate-y-0.5"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Nuevo Entrenamiento
+                </button>
+              </div>
             </div>
 
             {/* Stats Cards */}
@@ -193,7 +391,7 @@ const TrainingsPage: React.FC = () => {
                       {trainings.filter(t => {
                         const today = new Date();
                         const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
-                        const trainingDate = new Date(t.fecha);
+                        const trainingDate = new Date(t.instance_date || t.fecha);
                         return trainingDate >= today && trainingDate <= weekFromNow;
                       }).length}
                     </p>
@@ -209,14 +407,14 @@ const TrainingsPage: React.FC = () => {
               <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Entrenamientos Activos</p>
+                    <p className="text-sm font-medium text-gray-600">Cancelados</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {trainings.filter(t => t.estado === 'activo').length}
+                      {trainings.filter(t => t.is_cancelled || t.estado === 'cancelado').length}
                     </p>
                   </div>
-                  <div className="p-3 bg-green-100 rounded-lg">
-                    <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <div className="p-3 bg-red-100 rounded-lg">
+                    <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </div>
                 </div>
@@ -282,6 +480,7 @@ const TrainingsPage: React.FC = () => {
                     events={calendarEvents}
                     dateClick={handleDateClick}
                     eventClick={handleEventClick}
+                    datesSet={handleDatesSet}
                     slotMinTime="06:00:00"
                     slotMaxTime="22:00:00"
                     allDaySlot={false}
@@ -319,6 +518,35 @@ const TrainingsPage: React.FC = () => {
                       info.el.style.transition = 'all 0.2s ease';
                       info.el.style.cursor = 'pointer';
                       
+                      // Agregar tooltip con información adicional
+                      const training = info.event.extendedProps.training;
+                      const team = info.event.extendedProps.team;
+                      const isCancelled = info.event.extendedProps.isCancelled;
+                      const isTemplate = info.event.extendedProps.isTemplate;
+                      
+                      let tooltip = `${team?.nombre || 'Equipo'}\n`;
+                      tooltip += `${training.hora_inicio} - ${training.hora_fin}\n`;
+                      tooltip += `Lugar: ${training.lugar}\n`;
+                      if (training.descripcion) {
+                        tooltip += `Descripción: ${training.descripcion}\n`;
+                      }
+                      if (isCancelled) {
+                        tooltip += '\n[CANCELADO]';
+                      }
+                      if (isTemplate) {
+                        tooltip += '\n[PLANTILLA]';
+                      }
+                      
+                      info.el.title = tooltip;
+                      
+                      // Agregar funcionalidad de cancelar con click derecho
+                      if (!isCancelled && !isTemplate) {
+                        info.el.addEventListener('contextmenu', (e) => {
+                          e.preventDefault();
+                          handleCancelInstance(training.id);
+                        });
+                      }
+                      
                       info.el.addEventListener('mouseenter', () => {
                         info.el.style.transform = 'translateY(-1px)';
                         info.el.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
@@ -348,15 +576,11 @@ const TrainingsPage: React.FC = () => {
                   setSelectedTraining(undefined);
                   setSelectedDate(undefined);
                 }}
-                onSave={() => {
+                onSave={(wasRecurrent?: boolean) => {
                   setShowForm(false);
                   setSelectedTraining(undefined);
                   setSelectedDate(undefined);
-                  // Recargar entrenamientos
-                  fetch('/api/trainings', { headers: { Authorization: `Bearer ${jwt}` } })
-                    .then(res => res.json())
-                    .then(data => setTrainings(data))
-                    .catch(err => console.error('Error recargando entrenamientos:', err));
+                  refreshData();
                 }}
                 selectedDate={selectedDate}
                 training={selectedTraining}
