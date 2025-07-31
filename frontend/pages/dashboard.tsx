@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
-import UserMenu from '../components/UserMenu';
 import Navbar from '../components/Navbar';
+import TrainingsWidget from '../components/TrainingsWidget';
 
 interface TeamCard {
   id: string;
@@ -50,10 +50,7 @@ const Dashboard: React.FC = () => {
     <>
       <Navbar />
       <main className="min-h-screen bg-gradient-to-br from-emerald-50 to-white px-4 py-12">
-        <div className="max-w-5xl mx-auto flex flex-col gap-8">
-          {/* <div className="flex justify-end">
-            <UserMenu />
-          </div> */}
+        <div className="max-w-7xl mx-auto flex flex-col gap-8">
           {isSuperAdmin ? (
             <>
               <h1 className="text-4xl font-black bg-gradient-to-r from-emerald-700 via-green-600 to-teal-700 bg-clip-text text-transparent mb-4 drop-shadow-lg">
@@ -67,12 +64,18 @@ const Dashboard: React.FC = () => {
               </div>
             </>
           ) : (
-            <>
-              <h1 className="text-3xl font-black bg-gradient-to-r from-emerald-700 via-green-600 to-teal-700 bg-clip-text text-transparent drop-shadow mb-8">Tus Equipos / Categorías</h1>
-              {/* Widget de cumpleaños */}
-              <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="flex flex-col gap-8">
+              {/* Próximos entrenamientos */}
+              <div className="w-full">
+                <TrainingsWidget />
+              </div>
+
+              {/* Cumpleaños */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-white rounded-2xl shadow-xl p-6 border border-emerald-100">
-                  <h2 className="text-xl font-bold text-emerald-700 flex items-center gap-2 mb-4">🎂 Cumpleaños del mes</h2>
+                  <h2 className="text-xl font-bold text-emerald-700 flex items-center gap-2 mb-4">
+                    🎂 Cumpleaños del mes
+                  </h2>
                   {(birthdays.mes?.length ?? 0) === 0 ? (
                     <div className="text-gray-400">Nadie cumple años este mes.</div>
                   ) : (
@@ -95,7 +98,9 @@ const Dashboard: React.FC = () => {
                   )}
                 </div>
                 <div className="bg-white rounded-2xl shadow-xl p-6 border border-emerald-100">
-                  <h2 className="text-xl font-bold text-emerald-700 flex items-center gap-2 mb-4">🎉 Próximos cumpleaños</h2>
+                  <h2 className="text-xl font-bold text-emerald-700 flex items-center gap-2 mb-4">
+                    🎉 Próximos cumpleaños
+                  </h2>
                   {(birthdays.proximos?.length ?? 0) === 0 ? (
                     <div className="text-gray-400">No hay próximos cumpleaños.</div>
                   ) : (
@@ -118,55 +123,62 @@ const Dashboard: React.FC = () => {
                   )}
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                {teams.map(team => (
-                  <div
-                    key={team.id}
-                    className="[perspective:1000px] cursor-pointer"
-                    onClick={() => setFlippedId(flippedId === team.id ? null : team.id)}
-                  >
-                    <div className={`relative w-full h-64 transition-transform duration-700 [transform-style:preserve-3d] ${flippedId === team.id ? '[transform:rotateY(180deg)]' : ''}`}> 
-                      {/* Cara frontal */}
-                      <div className="absolute inset-0 bg-white rounded-2xl shadow-xl flex flex-col items-center justify-center gap-4 [backface-visibility:hidden] border border-emerald-100">
-                        <div className="text-2xl font-bold text-emerald-700 text-center">{team.nombre}</div>
-                        <div className="text-lg text-gray-700">{team.categoria}</div>
-                        <div className="text-sm text-gray-500">Jugadores: {team.jugadores.length}</div>
-                        <div className="text-sm text-gray-500">Entrenador: {team.entrenador_nombre ? `${team.entrenador_nombre} ${team.entrenador_apellido || ''}` : '—'}</div>
-                      </div>
-                      {/* Cara trasera */}
-                      <div className="absolute inset-0 bg-white rounded-2xl shadow-xl p-4 flex flex-col justify-center [transform:rotateY(180deg)] [backface-visibility:hidden] border border-emerald-100">
-                        <button
-                          onClick={e => { e.stopPropagation(); setFlippedId(null); }}
-                          className="absolute top-2 right-2 text-emerald-700 hover:text-red-500 text-2xl font-bold"
-                          aria-label="Cerrar"
-                        >×</button>
-                        <div className="mb-2 font-semibold text-emerald-700">Jugadores:</div>
-                        {team.jugadores.length === 0 ? (
-                          <div className="text-gray-400 mb-2">No hay jugadores</div>
-                        ) : (
-                          <ul className="ml-2 mb-2 flex flex-col gap-1 max-h-40 overflow-y-auto pr-2">
-                            {team.jugadores.map(j => (
-                              <li key={j.id} className="flex items-center gap-2">
-                                {j.foto_url ? (
-                                  <img src={j.foto_url} alt="Foto" className="w-8 h-8 rounded-full object-cover border" />
-                                ) : (
-                                  <span className="w-8 h-8 flex items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 text-white font-bold text-sm shadow">
-                                    {j.nombre.charAt(0)}
-                                  </span>
-                                )}
-                                <span>{j.nombre} {j.apellido}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                        <div className="mt-2 font-semibold text-emerald-700">Entrenador:</div>
-                        <div className="text-gray-700">{team.entrenador_nombre ? `${team.entrenador_nombre} ${team.entrenador_apellido || ''}` : '—'}</div>
+
+              {/* Equipos */}
+              <div>
+                <h2 className="text-xl font-bold text-emerald-700 flex items-center gap-2 mb-4">
+                  ⚽ Mis equipos
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                  {teams.map(team => (
+                    <div
+                      key={team.id}
+                      className="[perspective:1000px] cursor-pointer"
+                      onClick={() => setFlippedId(flippedId === team.id ? null : team.id)}
+                    >
+                      <div className={`relative w-full h-64 transition-transform duration-700 [transform-style:preserve-3d] ${flippedId === team.id ? '[transform:rotateY(180deg)]' : ''}`}> 
+                        {/* Cara frontal */}
+                        <div className="absolute inset-0 bg-white rounded-2xl shadow-xl flex flex-col items-center justify-center gap-4 [backface-visibility:hidden] border border-emerald-100">
+                          <div className="text-2xl font-bold text-emerald-700 text-center">{team.nombre}</div>
+                          <div className="text-lg text-gray-700">{team.categoria}</div>
+                          <div className="text-sm text-gray-500">Jugadores: {team.jugadores.length}</div>
+                          <div className="text-sm text-gray-500">Entrenador: {team.entrenador_nombre ? `${team.entrenador_nombre} ${team.entrenador_apellido || ''}` : '—'}</div>
+                        </div>
+                        {/* Cara trasera */}
+                        <div className="absolute inset-0 bg-white rounded-2xl shadow-xl p-4 flex flex-col justify-center [transform:rotateY(180deg)] [backface-visibility:hidden] border border-emerald-100">
+                          <button
+                            onClick={e => { e.stopPropagation(); setFlippedId(null); }}
+                            className="absolute top-2 right-2 text-emerald-700 hover:text-red-500 text-2xl font-bold"
+                            aria-label="Cerrar"
+                          >×</button>
+                          <div className="mb-2 font-semibold text-emerald-700">Jugadores:</div>
+                          {team.jugadores.length === 0 ? (
+                            <div className="text-gray-400 mb-2">No hay jugadores</div>
+                          ) : (
+                            <ul className="ml-2 mb-2 flex flex-col gap-1 max-h-40 overflow-y-auto pr-2">
+                              {team.jugadores.map(j => (
+                                <li key={j.id} className="flex items-center gap-2">
+                                  {j.foto_url ? (
+                                    <img src={j.foto_url} alt="Foto" className="w-8 h-8 rounded-full object-cover border" />
+                                  ) : (
+                                    <span className="w-8 h-8 flex items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 text-white font-bold text-sm shadow">
+                                      {j.nombre.charAt(0)}
+                                    </span>
+                                  )}
+                                  <span>{j.nombre} {j.apellido}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                          <div className="mt-2 font-semibold text-emerald-700">Entrenador:</div>
+                          <div className="text-gray-700">{team.entrenador_nombre ? `${team.entrenador_nombre} ${team.entrenador_apellido || ''}` : '—'}</div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </>
+            </div>
           )}
         </div>
       </main>
