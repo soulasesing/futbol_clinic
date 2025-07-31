@@ -15,6 +15,7 @@
     "@fullcalendar/react": "^6.1.18",
     "@fullcalendar/timegrid": "^6.1.18",
     "autoprefixer": "^10.4.16",
+    "lucide-react": "^0.535.0",
     "next": "^14.2.0",
     "postcss": "^8.4.38",
     "react": "^18.2.0",
