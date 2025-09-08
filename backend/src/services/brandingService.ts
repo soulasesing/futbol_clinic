@@ -18,30 +18,31 @@ export const updateColors = async (tenantId: string, primary: string, secondary:
 
 export const updateBranding = async (tenantId: string, data: any) => {
   const {
-    logo_url, banner_url, primary_color, secondary_color,
+    nombre, logo_url, banner_url, primary_color, secondary_color,
     description, slogan, telefono, email, facebook_url, instagram_url, twitter_url, youtube_url, tiktok_url, foundation_date
   } = data;
   await pool.query(
     `UPDATE tenants SET
-      logo_url = COALESCE($1, logo_url),
-      banner_url = COALESCE($2, banner_url),
-      primary_color = COALESCE($3, primary_color),
-      secondary_color = COALESCE($4, secondary_color),
-      description = COALESCE($5, description),
-      slogan = COALESCE($6, slogan),
-      telefono = COALESCE($7, telefono),
-      email = COALESCE($8, email),
-      facebook_url = COALESCE($9, facebook_url),
-      instagram_url = COALESCE($10, instagram_url),
-      twitter_url = COALESCE($11, twitter_url),
-      youtube_url = COALESCE($12, youtube_url),
-      tiktok_url = COALESCE($13, tiktok_url),
-      foundation_date = COALESCE($14, foundation_date)
-     WHERE id = $15`,
-    [logo_url, banner_url, primary_color, secondary_color, description, slogan, telefono, email, facebook_url, instagram_url, twitter_url, youtube_url, tiktok_url, foundation_date, tenantId]
+      nombre = COALESCE($1, nombre),
+      logo_url = COALESCE($2, logo_url),
+      banner_url = COALESCE($3, banner_url),
+      primary_color = COALESCE($4, primary_color),
+      secondary_color = COALESCE($5, secondary_color),
+      description = COALESCE($6, description),
+      slogan = COALESCE($7, slogan),
+      telefono = COALESCE($8, telefono),
+      email = COALESCE($9, email),
+      facebook_url = COALESCE($10, facebook_url),
+      instagram_url = COALESCE($11, instagram_url),
+      twitter_url = COALESCE($12, twitter_url),
+      youtube_url = COALESCE($13, youtube_url),
+      tiktok_url = COALESCE($14, tiktok_url),
+      foundation_date = COALESCE($15, foundation_date)
+     WHERE id = $16`,
+    [nombre, logo_url, banner_url, primary_color, secondary_color, description, slogan, telefono, email, facebook_url, instagram_url, twitter_url, youtube_url, tiktok_url, foundation_date, tenantId]
   );
   return {
-    logo_url, banner_url, primary_color, secondary_color,
+    nombre, logo_url, banner_url, primary_color, secondary_color,
     description, slogan, telefono, email, facebook_url, instagram_url, twitter_url, youtube_url, tiktok_url, foundation_date
   };
 }; 

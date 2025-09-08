@@ -1,9 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Navbar from '../components/Navbar';
 import { useAuth } from '../contexts/AuthContext';
+import { useBranding } from '../contexts/BrandingContext';
 
 const ConfiguracionEscuela: React.FC = () => {
   const { isAuthenticated, user, jwt } = useAuth() as any;
+  const { refreshBranding } = useBranding();
   const [nombre, setNombre] = useState('');
   const [foundationDate, setFoundationDate] = useState('');
   const [description, setDescription] = useState('');
@@ -104,6 +106,9 @@ const ConfiguracionEscuela: React.FC = () => {
       setSuccess('¡Configuración guardada!');
       setLogo(logo_url);
       setBanner(banner_url);
+      
+      // Refresh branding to update navbar and theme immediately
+      await refreshBranding();
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -213,6 +218,9 @@ const ConfiguracionEscuela: React.FC = () => {
                     });
                     if (!res.ok) throw new Error('Error al restaurar configuración');
                     setSuccess('¡Configuración restaurada!');
+                    
+                    // Refresh branding to update navbar and theme
+                    await refreshBranding();
                   } catch (err: any) {
                     setError(err.message);
                   } finally {
