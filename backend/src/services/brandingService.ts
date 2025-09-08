@@ -23,13 +23,13 @@ export const updateBranding = async (tenantId: string, data: any) => {
   } = data;
   await pool.query(
     `UPDATE tenants SET
-      nombre = COALESCE($1, nombre),
-      logo_url = COALESCE($2, logo_url),
-      banner_url = COALESCE($3, banner_url),
-      primary_color = COALESCE($4, primary_color),
-      secondary_color = COALESCE($5, secondary_color),
-      description = COALESCE($6, description),
-      slogan = COALESCE($7, slogan),
+      nombre = $1,
+      logo_url = $2,
+      banner_url = $3,
+      primary_color = $4,
+      secondary_color = $5,
+      description = $6,
+      slogan = $7,
       telefono = COALESCE($8, telefono),
       email = COALESCE($9, email),
       facebook_url = COALESCE($10, facebook_url),

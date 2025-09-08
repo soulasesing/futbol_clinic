@@ -197,11 +197,28 @@ const ConfiguracionEscuela: React.FC = () => {
                 type="button"
                 className="bg-gradient-to-r from-gray-200 to-gray-100 text-emerald-700 font-bold py-2 px-6 rounded-lg shadow hover:scale-105 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-400 border border-emerald-200"
                 onClick={async () => {
-                  if (!window.confirm('¿Seguro que deseas restaurar la configuración original?')) return;
-                  setLogo(original.logo);
-                  setBanner(original.banner);
-                  setPrimaryColor(original.primary);
-                  setSecondaryColor(original.secondary);
+                  if (!window.confirm('¿Seguro que deseas restaurar a los valores por defecto de la plataforma? Esto cambiará el nombre a "Futbol Clinic", colores verdes originales y eliminará logo personalizado.')) return;
+                  
+                  // Set default platform values
+                  const defaultValues = {
+                    nombre: 'Futbol Clinic',
+                    logo_url: null,
+                    banner_url: null,
+                    primary_color: '#22c55e', // Original emerald green
+                    secondary_color: '#0d9488', // Original teal
+                    description: null,
+                    slogan: null,
+                  };
+                  
+                  // Update form state
+                  setNombre(defaultValues.nombre);
+                  setLogo(defaultValues.logo_url);
+                  setBanner(defaultValues.banner_url);
+                  setPrimaryColor(defaultValues.primary_color);
+                  setSecondaryColor(defaultValues.secondary_color);
+                  setDescription('');
+                  setSlogan('');
+                  
                   setLoading(true);
                   setError('');
                   setSuccess('');
@@ -209,15 +226,10 @@ const ConfiguracionEscuela: React.FC = () => {
                     const res = await fetch('/api/branding', {
                       method: 'PUT',
                       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
-                      body: JSON.stringify({
-                        logo_url: original.logo,
-                        banner_url: original.banner,
-                        primary_color: original.primary,
-                        secondary_color: original.secondary,
-                      }),
+                      body: JSON.stringify(defaultValues),
                     });
                     if (!res.ok) throw new Error('Error al restaurar configuración');
-                    setSuccess('¡Configuración restaurada!');
+                    setSuccess('¡Configuración restaurada a valores por defecto!');
                     
                     // Refresh branding to update navbar and theme
                     await refreshBranding();
