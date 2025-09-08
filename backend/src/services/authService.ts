@@ -86,4 +86,35 @@ export const resetPassword = async (token: string, newPassword: string) => {
     [passwordHash, user.id]
   );
   return { message: 'Contraseña actualizada' };
+};
+
+export const changePassword = async (userId: string, currentPassword: string, newPassword: string) => {
+  // Get user's current password hash
+  const result = await pool.query(
+    'SELECT password_hash FROM users WHERE id = $1',
+    [userId]
+  );
+  
+  if (!result.rowCount || result.rowCount === 0) {
+    throw new Error('Usuario no encontrado');
+  }
+  
+  const user = result.rows[0];
+  
+  // Verify current password
+  const isCurrentPasswordValid = await comparePassword(currentPassword, user.password_hash);
+  if (!isCurrentPasswordValid) {
+    throw new Error('La contraseña actual es incorrecta');
+  }
+  
+  // Hash new password
+  const newPasswordHash = await hashPassword(newPassword);
+  
+  // Update password
+  await pool.query(
+    'UPDATE users SET password_hash = $1 WHERE id = $2',
+    [newPasswordHash, userId]
+  );
+  
+  return { message: 'Contraseña actualizada exitosamente' };
 }; 

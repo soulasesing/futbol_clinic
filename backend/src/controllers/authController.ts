@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as authService from '../services/authService';
+import { AuthRequest } from '../middlewares/authMiddleware';
 
 export const register = async (req: Request, res: Response) => {
   try {
@@ -52,6 +53,30 @@ export const resetPassword = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Faltan datos para reset' });
     }
     const result = await authService.resetPassword(token, password);
+    res.json(result);
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const changePassword = async (req: AuthRequest, res: Response) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'La contraseña actual y nueva son requeridas' });
+    }
+    
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: 'La nueva contraseña debe tener al menos 6 caracteres' });
+    }
+    
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: 'Usuario no autenticado' });
+    }
+    
+    const result = await authService.changePassword(userId, currentPassword, newPassword);
     res.json(result);
   } catch (error: any) {
     res.status(400).json({ message: error.message });

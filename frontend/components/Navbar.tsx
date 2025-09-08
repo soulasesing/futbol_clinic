@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '../contexts/AuthContext';
 import { useBranding } from '../contexts/BrandingContext';
 import { useRouter } from 'next/router';
+import { ChevronDown, Lock, LogOut } from 'lucide-react';
+import PasswordChangeModal from './PasswordChangeModal';
 
 const getInitial = (email?: string) => email ? email.charAt(0).toUpperCase() : '?';
 
@@ -10,8 +12,25 @@ const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
   const { branding } = useBranding();
   const router = useRouter();
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   // Simulación: si el usuario tuviera foto, sería user.foto_url
   const avatarUrl = (user as any)?.foto_url;
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   // Menú para super admin
   const superAdminLinks = [
@@ -79,37 +98,91 @@ const Navbar: React.FC = () => {
         ))}
       </div>
 
-      {/* Usuario y logout */}
-      <div className="flex items-center gap-4">
-        {/* Avatar */}
-        {avatarUrl ? (
-          <img
-            src={avatarUrl}
-            alt="Avatar"
-            className="w-10 h-10 rounded-full object-cover border-2 border-white shadow"
-          />
-        ) : (
-          <span className="w-10 h-10 flex items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 text-white font-bold text-xl shadow">
-            {getInitial(user?.email)}
-          </span>
-        )}
-        <div className="flex flex-col items-end">
-          <span className="text-white font-semibold text-sm">{user?.email}</span>
-          <span className="text-emerald-100 text-xs">{user?.role}</span>
-        </div>
+      {/* Usuario y dropdown */}
+      <div className="relative" ref={dropdownRef}>
         <button
-          onClick={() => { logout(); router.push('/'); }}
-          className="ml-2 px-4 py-1 rounded-full text-white font-bold shadow hover:scale-105 transition-all focus:outline-none focus:ring-2 focus:ring-white/50"
-          style={{
-            background: branding 
-              ? `linear-gradient(to right, ${branding.secondary_color}, ${branding.primary_color})`
-              : 'linear-gradient(to right, #0d9488, #22c55e)'
-          }}
-          aria-label="Cerrar sesión"
+          onClick={() => setShowUserMenu(!showUserMenu)}
+          className="flex items-center gap-3 hover:bg-white/10 rounded-lg px-3 py-2 transition-colors focus:outline-none focus:ring-2 focus:ring-white/50"
         >
-          Logout
+          {/* Avatar */}
+          {avatarUrl ? (
+            <img
+              src={avatarUrl}
+              alt="Avatar"
+              className="w-10 h-10 rounded-full object-cover border-2 border-white shadow"
+            />
+          ) : (
+            <span className="w-10 h-10 flex items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 text-white font-bold text-xl shadow">
+              {getInitial(user?.email)}
+            </span>
+          )}
+          <div className="flex flex-col items-start text-left">
+            <span className="text-white font-semibold text-sm">{user?.email}</span>
+            <span className="text-emerald-100 text-xs">{user?.role}</span>
+          </div>
+          <ChevronDown className={`w-4 h-4 text-white transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
         </button>
+
+        {/* Dropdown Menu */}
+        {showUserMenu && (
+          <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-2xl border border-gray-100 py-2 z-50">
+            {/* User Info Header */}
+            <div className="px-4 py-3 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt="Avatar"
+                    className="w-8 h-8 rounded-full object-cover"
+                  />
+                ) : (
+                  <span className="w-8 h-8 flex items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 text-white font-bold text-sm">
+                    {getInitial(user?.email)}
+                  </span>
+                )}
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">{user?.email}</p>
+                  <p className="text-xs text-gray-500 capitalize">{user?.role}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Menu Items */}
+            <div className="py-1">
+              <button
+                onClick={() => {
+                  setShowUserMenu(false);
+                  setShowPasswordModal(true);
+                }}
+                className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                <Lock className="w-4 h-4 text-emerald-600" />
+                Cambiar contraseña
+              </button>
+              
+              <div className="border-t border-gray-100 my-1"></div>
+              
+              <button
+                onClick={() => {
+                  setShowUserMenu(false);
+                  logout();
+                  router.push('/');
+                }}
+                className="flex items-center gap-3 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+                Cerrar sesión
+              </button>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Password Change Modal */}
+      <PasswordChangeModal 
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+      />
 
       {/* Menú móvil */}
       {/* (Para MVP, solo links en desktop. Se puede agregar menú hamburguesa luego) */}
