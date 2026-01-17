@@ -1,4 +1,9 @@
 # ============================================
+# Alternative Dockerfile using NPM instead of Yarn
+# Use this if you continue having issues with Yarn
+# ============================================
+
+# ============================================
 # Stage 1: Build Stage
 # ============================================
 FROM node:20-alpine AS builder
@@ -13,18 +18,16 @@ RUN apk add --no-cache python3 make g++ ca-certificates
 RUN update-ca-certificates
 
 # Copy package files
-COPY package.json yarn.lock ./
+COPY package.json package-lock.json* ./
 
-# Configure yarn and install ALL dependencies (including devDependencies for building)
-# Note: strict-ssl false is only for build time due to corporate proxy/firewall issues
-RUN yarn config set strict-ssl false && \
-    yarn install --frozen-lockfile --network-timeout 100000
+# Install ALL dependencies (including devDependencies for building)
+RUN npm ci --legacy-peer-deps || npm install
 
 # Copy source code
 COPY . .
 
 # Build TypeScript to JavaScript
-RUN yarn build
+RUN npm run build
 
 # ============================================
 # Stage 2: Production Stage
@@ -41,11 +44,10 @@ RUN apk add --no-cache python3 make g++ ca-certificates
 RUN update-ca-certificates
 
 # Copy package files
-COPY package.json yarn.lock ./
+COPY package.json package-lock.json* ./
 
-# Configure yarn and install ONLY production dependencies
-RUN yarn config set strict-ssl false && \
-    yarn install --frozen-lockfile --production --network-timeout 100000
+# Install ONLY production dependencies
+RUN npm ci --omit=dev --legacy-peer-deps || npm install --omit=dev
 
 # Copy built files from builder stage
 COPY --from=builder /app/dist ./dist
@@ -68,4 +70,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD node -e "require('http').get('http://localhost:4000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
 # Start the application
-CMD ["node", "dist/server.js"] 
+CMD ["node", "dist/server.js"]
+

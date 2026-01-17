@@ -1,33 +1,411 @@
-You are a Senior Front-End Developer and an Expert in ReactJS, NextJS, JavaScript, TypeScript, HTML, CSS and modern UI/UX frameworks (e.g., TailwindCSS, Shadcn, Radix). You are thoughtful, give nuanced answers, and are brilliant at reasoning. You carefully provide accurate, factual, thoughtful answers, and are a genius at reasoning.
+# Futbol Clinic - Cursor AI Rules
 
-- Follow the user’s requirements carefully & to the letter.
-- First think step-by-step - describe your plan for what to build in pseudocode, written out in great detail.
-- Confirm, then write code!
-- Always write correct, best practice, DRY principle (Dont Repeat Yourself), bug free, fully functional and working code also it should be aligned to listed rules down below at Code Implementation Guidelines .
-- Focus on easy and readability code, over being performant.
-- Fully implement all requested functionality.
-- Leave NO todo’s, placeholders or missing pieces.
-- Ensure code is complete! Verify thoroughly finalised.
-- Include all required imports, and ensure proper naming of key components.
-- Be concise Minimize any other prose.
-- If you think there might not be a correct answer, you say so.
-- If you do not know the answer, say so, instead of guessing.
+## Project Overview
+You are working on **Futbol Clinic**, a multi-tenant SaaS platform for managing football/soccer schools (escuelas de fútbol). The platform enables football academies to manage players, teams, coaches, trainings, matches, attendance, physical tests, and more with complete tenant isolation.
 
-### Coding Environment
-The user asks questions about the following coding languages:
-- ReactJS
-- NextJS
-- JavaScript
-- TypeScript
-- TailwindCSS
-- HTML
-- CSS
+## Technology Stack
 
-### Code Implementation Guidelines
-Follow these rules when you write code:
-- Use early returns whenever possible to make the code more readable.
-- Always use Tailwind classes for styling HTML elements; avoid using CSS or tags.
-- Use “class:” instead of the tertiary operator in class tags whenever possible.
-- Use descriptive variable and function/const names. Also, event functions should be named with a “handle” prefix, like “handleClick” for onClick and “handleKeyDown” for onKeyDown.
-- Implement accessibility features on elements. For example, a tag should have a tabindex=“0”, aria-label, on:click, and on:keydown, and similar attributes.
-- Use consts instead of functions, for example, “const toggle = () =>”. Also, define a type if possible.
+### Backend
+- **Runtime**: Node.js with TypeScript
+- **Framework**: Express.js
+- **Database**: PostgreSQL 15 with Row-Level Security (RLS) for multi-tenancy
+- **Authentication**: JWT (jsonwebtoken) with bcrypt for password hashing
+- **API Style**: RESTful API
+- **Key Libraries**:
+  - `pg` for PostgreSQL connection pooling
+  - `multer` for file uploads
+  - `nodemailer` for email notifications
+  - `@vercel/blob` for file storage
+  - `uuid` for generating unique identifiers
+  - `cors` for cross-origin requests
+
+### Frontend
+- **Framework**: Next.js 14 (Pages Router)
+- **React**: v18.2.0
+- **Language**: TypeScript
+- **Styling**: TailwindCSS 3.4 with utility-first approach
+- **State Management**: React Context API (AuthContext, BrandingContext)
+- **Icons**: lucide-react
+- **Calendar**: FullCalendar (@fullcalendar/react)
+- **UI Pattern**: Modern, gradient-heavy design with glassmorphism effects
+
+### Infrastructure
+- **Containerization**: Docker & Docker Compose
+- **Deployment**: Vercel-ready with docker fallback
+- **Database Migrations**: SQL files in `/backend/migrations/`
+
+## Architecture Patterns
+
+### Multi-Tenancy
+- **Tenant Isolation**: PostgreSQL Row-Level Security (RLS) policies
+- **Tenant Context**: Set via `SET app.current_tenant` in middleware
+- **Super Admin**: Special role that bypasses tenant isolation
+- **Tenant Middleware**: `tenantMiddleware.ts` sets tenant context per request
+
+### Authentication & Authorization
+- **Roles**: `super_admin`, `admin`, `coach`, `parent`
+- **JWT Payload**: Contains `userId`, `email`, `tenantId`, `role`
+- **Middleware**: `authMiddleware.ts` with `requireAuth` and `requireAdminAuth`
+- **Frontend Auth**: `AuthContext.tsx` manages JWT and user state in localStorage
+
+### Backend Structure
+```
+backend/src/
+├── controllers/    # Request handlers, call services
+├── services/       # Business logic, database operations
+├── routes/         # Express route definitions
+├── middlewares/    # Auth and tenant middlewares
+├── utils/          # Database pool, JWT, hashing utilities
+└── types/          # TypeScript type definitions
+```
+
+### Frontend Structure
+```
+frontend/
+├── pages/          # Next.js pages (file-based routing)
+├── components/     # Reusable UI components
+├── contexts/       # React Context providers (Auth, Branding)
+├── styles/         # Global CSS and Tailwind config
+└── utils/          # Helper functions
+```
+
+## Database Schema Key Entities
+- **tenants**: Football schools/academies (multi-tenant root)
+- **users**: Authenticated users (admin, coach) with tenant_id
+- **players**: Player profiles with parent information
+- **teams**: Teams/categories within each school
+- **coaches**: Coach profiles with photo
+- **trainings**: Training sessions with recurrence support
+- **matches**: Match scheduling with opponent info
+- **attendance**: Track attendance for trainings/matches
+- **physical_tests**: Store physical performance tests
+- **invitations**: Invite users to join tenant
+- **player_teams**: Many-to-many relationship (players can be in multiple teams)
+
+## Coding Standards & Best Practices
+
+### General TypeScript Rules
+- Use **strict mode** TypeScript (`strict: true`)
+- Prefer **interfaces** over types for object shapes
+- Use **explicit return types** for functions
+- Always handle errors with try-catch in async functions
+- Use **early returns** to reduce nesting and improve readability
+
+### Backend Best Practices
+- **Service Pattern**: Controllers call services, services contain business logic
+- **Tenant Isolation**: Always use `tenantId` in queries (except super_admin)
+- **SQL Queries**: Use parameterized queries ($1, $2) to prevent SQL injection
+- **Error Handling**: Return appropriate HTTP status codes (401, 403, 404, 500)
+- **UUID Generation**: Use `uuid` library with `uuidv4()` for primary keys
+- **Password Security**: Always hash passwords with bcrypt before storage
+- **Validation**: Validate input data before processing
+- **Middleware Order**: CORS → JSON parsing → Auth → Tenant → Routes
+
+### Frontend Best Practices
+- **Component Naming**: Use PascalCase for component files and names
+- **Function Components**: Use `const` arrow functions with explicit types
+  ```typescript
+  const MyComponent: React.FC<Props> = ({ prop1, prop2 }) => { ... };
+  ```
+- **Event Handlers**: Prefix with `handle` (e.g., `handleClick`, `handleSubmit`)
+- **API Calls**: Use `fetch` with Authorization header from `localStorage.getItem('jwt')`
+- **Authentication Check**: Use `useAuth()` hook and redirect if not authenticated
+- **Branding**: Use `useBranding()` hook to access tenant-specific colors and logos
+- **Loading States**: Always show loading indicators during async operations
+- **Error Handling**: Display user-friendly error messages
+
+### React Patterns
+- **Hooks**: Use hooks at the top level of components
+- **useEffect**: Include all dependencies in dependency array
+- **State Management**: Use Context API for global state (auth, branding)
+- **Conditional Rendering**: Use early returns for auth checks
+- **Forms**: Controlled components with state management
+- **File Uploads**: Use FormData for multipart/form-data requests
+
+### TailwindCSS & Styling
+- **Utility-First**: Use Tailwind utility classes, avoid custom CSS
+- **Responsive Design**: Use responsive prefixes (sm:, md:, lg:, xl:)
+- **Color Scheme**: Primary colors are emerald/green/teal gradients
+- **Modern UI**: Use:
+  - `rounded-3xl` for large border radius
+  - Gradient backgrounds: `bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50`
+  - Glassmorphism: `bg-white/80 backdrop-blur-sm`
+  - Shadows: `shadow-xl` with hover effects
+  - Transitions: `transition-all duration-300`
+  - Hover effects: `hover:scale-105` for interactive elements
+- **Dynamic Colors**: Use CSS custom properties for tenant branding
+- **Accessibility**: Include `aria-label`, `tabindex`, proper semantic HTML
+
+### Component Best Practices
+- **Props Interface**: Define props interface above component
+- **Reusability**: Create reusable components in `/components/`
+- **Composition**: Break large components into smaller, focused components
+- **Avoid Prop Drilling**: Use Context for deeply nested shared state
+- **TypeScript**: Always type props, state, and context values
+
+## API Patterns
+
+### Request Structure
+```typescript
+// Authentication required
+headers: {
+  'Authorization': `Bearer ${jwt}`,
+  'Content-Type': 'application/json'
+}
+```
+
+### Response Structure
+```typescript
+// Success
+{ data: any } or array
+
+// Error
+{ message: string, error?: string }
+```
+
+### Common Endpoints
+- `POST /api/auth/login` - Login with email/password
+- `POST /api/auth/register` - Register new tenant/user
+- `GET /api/players` - Get all players for tenant
+- `POST /api/players` - Create new player
+- `GET /api/teams` - Get all teams for tenant
+- `GET /api/trainings` - Get trainings for tenant
+- `GET /api/matches` - Get matches for tenant
+- `GET /api/dashboard/*` - Dashboard stats and widgets
+
+## File Upload Handling
+- **Backend**: Use multer middleware for file processing
+- **Storage**: Local filesystem in `public/uploads/` or Vercel Blob
+- **Frontend**: Use `<input type="file">` with FormData
+- **URLs**: Store relative paths in database (e.g., `/uploads/players/foto.jpg`)
+
+## Multi-Tenant Considerations
+- **Super Admin**: Has access to all tenants, bypass RLS
+- **Admin**: Full access within their tenant
+- **Coach**: Limited access to assigned teams/trainings
+- **Parent**: View-only access to their children's data
+- **Tenant ID**: Always passed via JWT, extracted in middleware
+- **Branding**: Each tenant has custom colors, logo, banner
+- **Data Isolation**: PostgreSQL RLS ensures data cannot leak between tenants
+
+## Testing Strategy (Future)
+- Backend: Jest with supertest for API testing
+- Frontend: Jest with @testing-library/react
+- Test files location: `/backend/tests/` and `/frontend/tests/`
+
+## Environment Variables
+
+### Backend (.env)
+```
+DATABASE_URL=postgresql://user:password@host:5432/futbol_clinic
+JWT_SECRET=your-secret-key-at-least-32-characters
+PORT=4000
+FRONTEND_URL=http://localhost:3000
+BLOB_READ_WRITE_TOKEN=token-for-file-storage
+GMAIL_USER=email@gmail.com
+GMAIL_PASS=app-password
+```
+
+### Frontend (.env.local)
+```
+NEXT_PUBLIC_API_URL=http://localhost:4000/api
+NEXT_PUBLIC_BACKEND_URL=http://localhost:4000
+```
+
+## Migration Management
+- Location: `/backend/migrations/*.sql`
+- Naming: `00X_description.sql` (sequential numbering)
+- Apply: Run migrations manually or via init scripts
+- Always include: Rollback strategy in comments
+
+## Common Tasks & Patterns
+
+### Creating a New Entity
+1. Create migration SQL in `/backend/migrations/`
+2. Add service functions in `/backend/src/services/entityService.ts`
+3. Add controller in `/backend/src/controllers/entityController.ts`
+4. Add routes in `/backend/src/routes/entityRoutes.ts`
+5. Import routes in `app.ts`
+6. Create frontend page in `/frontend/pages/entity.tsx`
+7. Add navigation link in `Navbar.tsx`
+
+### Adding Authentication to a Page
+```typescript
+const { isAuthenticated, user } = useAuth();
+const router = useRouter();
+
+useEffect(() => {
+  if (!isAuthenticated) {
+    router.replace('/login');
+  }
+}, [isAuthenticated, router]);
+
+if (!isAuthenticated) return null;
+```
+
+### Making Authenticated API Calls
+```typescript
+const jwt = localStorage.getItem('jwt');
+const response = await fetch('/api/endpoint', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${jwt}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify(data)
+});
+const result = await response.json();
+```
+
+### Creating Tenant-Aware Queries
+```typescript
+// In service
+export const getEntities = async (tenantId: string) => {
+  const result = await pool.query(
+    'SELECT * FROM entities WHERE tenant_id = $1',
+    [tenantId]
+  );
+  return result.rows;
+};
+
+// In controller
+const entities = await getEntities(req.user!.tenantId);
+```
+
+## Design Philosophy
+- **User-Centric**: Prioritize ease of use for coaches and admins
+- **Mobile-First**: Responsive design for tablets and phones
+- **Modern Aesthetics**: Use gradients, shadows, animations
+- **Performance**: Optimize images, lazy load components
+- **Accessibility**: Semantic HTML, ARIA labels, keyboard navigation
+- **Internationalization**: Spanish language (es-ES) as primary
+
+## Git Workflow
+- Feature branches: `feature/description`
+- Bug fixes: `fix/description`
+- Commit messages: Clear, descriptive (Spanish or English)
+- No commits to main without testing
+
+## Docker Development
+- `docker-compose up -d` to start all services
+- Backend: http://localhost:4000
+- Frontend: http://localhost:3000
+- Database: PostgreSQL on port 5432
+- Volumes persist data between restarts
+
+## Code Review Checklist
+- [ ] TypeScript strict mode compliance
+- [ ] Proper error handling with try-catch
+- [ ] Tenant isolation in database queries
+- [ ] Authentication/authorization checks
+- [ ] Input validation and sanitization
+- [ ] No hardcoded secrets or credentials
+- [ ] Responsive design with Tailwind
+- [ ] Loading states and error messages
+- [ ] Accessibility attributes
+- [ ] Clean, readable code with meaningful names
+- [ ] No console.logs in production code
+- [ ] Comments for complex logic
+
+## Performance Considerations
+- Use connection pooling for database (`pg.Pool`)
+- Implement pagination for large datasets
+- Optimize SQL queries (indexes, avoid N+1)
+- Lazy load components with Next.js dynamic imports
+- Optimize images (Next.js Image component)
+- Cache frequently accessed data
+- Use React.memo for expensive components
+
+## Security Best Practices
+- **Never** expose JWT_SECRET or database credentials
+- **Always** validate and sanitize user input
+- **Always** use parameterized queries (prevent SQL injection)
+- **Always** hash passwords with bcrypt (never store plain text)
+- **Always** verify JWT tokens in protected routes
+- **Always** implement rate limiting for API endpoints
+- **Always** use HTTPS in production
+- **Always** sanitize file uploads
+- **Always** implement CSRF protection for state-changing operations
+
+## Debugging Tips
+- Backend: Check `/api/health` and `/api/db-test` endpoints
+- Frontend: Use React DevTools and browser console
+- Database: Use `psql` or pgAdmin to inspect data
+- Network: Use browser DevTools Network tab for API calls
+- Check tenant_id in JWT payload for multi-tenant issues
+- Verify RLS policies if data not showing
+
+## Key Business Logic
+- **Player Registration**: Capture player, parent, and document info
+- **Team Assignment**: Players can belong to multiple teams
+- **Training Recurrence**: Support recurring training schedules
+- **Match Convocations**: Select players for specific matches
+- **Attendance Tracking**: Mark present/absent for trainings/matches
+- **Physical Tests**: Track player performance metrics over time
+- **Birthday Tracking**: Show upcoming and monthly birthdays
+- **Dashboard Stats**: Real-time metrics for admins
+
+## Common Pitfalls to Avoid
+- Forgetting to include `tenant_id` in queries (causes data leaks)
+- Not handling loading/error states in components
+- Hardcoding URLs instead of using environment variables
+- Missing authentication checks on protected pages
+- Not typing props and state in TypeScript
+- Using inline styles instead of Tailwind classes
+- Forgetting to validate user input on both frontend and backend
+- Not implementing proper error messages for users
+- Missing responsive design breakpoints
+- Not testing multi-tenant isolation
+
+## UI/UX Guidelines
+- Use emerald (#22c55e) and teal (#0d9488) as primary colors
+- Cards should have rounded-3xl borders and subtle shadows
+- Hover effects should include scale transforms and shadow increases
+- Loading states should show spinners or skeleton screens
+- Empty states should have friendly messages and icons
+- Forms should have clear labels and validation feedback
+- Buttons should have loading states during async operations
+- Success/error messages should be prominent and auto-dismiss
+- Navigation should be intuitive with clear active states
+- Use emojis sparingly for visual interest (⚽🎂🎉)
+
+---
+
+## Quick Reference Commands
+
+### Development
+```bash
+# Backend
+cd backend && npm run dev
+
+# Frontend
+cd frontend && npm run dev
+
+# Docker (full stack)
+docker-compose up -d
+```
+
+### Database
+```bash
+# Connect to DB
+psql -h localhost -U postgres -d futbol_clinic
+
+# Run migrations
+psql -h localhost -U postgres -d futbol_clinic -f backend/migrations/001_init.sql
+```
+
+### Build & Deploy
+```bash
+# Backend build
+cd backend && npm run build
+
+# Frontend build
+cd frontend && npm run build
+
+# Docker build
+docker-compose build
+```
+
+---
+
+**Remember**: This is a multi-tenant application where data isolation is critical. Always test with multiple tenants to ensure no data leakage. Prioritize security, user experience, and code quality.

@@ -1,23 +1,102 @@
 version: '3.8'
+
 services:
+  # PostgreSQL Database
+  database:
+    image: postgres:15-alpine
+    container_name: futbol_clinic_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: futbol_clinic
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=scram-sha-256"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d
+      - ./database/backups:/backups
+    ports:
+      - "5432:5432"
+    networks:
+      - futbol_clinic_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d futbol_clinic"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API Service
   backend:
-    build: ./backend
-    command: sh -c "yarn install && yarn dev"
-    volumes:
-      - ./backend:/app
-    ports:
-      - '4000:4000'
-    environment:
-      DATABASE_URL: postgres://postgres:postgres@host.docker.internal:5432/futbol_clinic
-      NODE_ENV: development
-  frontend:
-    build: ./frontend
-    command: sh -c "yarn install && yarn dev"
-    volumes:
-      - ./frontend:/app
-    ports:
-      - '3000:3000'
-    environment:
-      NODE_ENV: development
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: futbol_clinic_backend
+    restart: unless-stopped
     depends_on:
-      - backend 
+      database:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:postgres123@database:5432/futbol_clinic
+      JWT_SECRET: your-super-secure-production-jwt-secret-at-least-32-characters-long-for-aws-deployment
+      FRONTEND_URL: http://localhost:3000
+      BACKEND_URL: http://localhost:4000
+      PORT: 4000
+      # File storage - you can configure local storage or AWS S3
+      BLOB_READ_WRITE_TOKEN: local-storage-token
+      # Email configuration (optional)
+      GMAIL_USER: your-email@gmail.com
+      GMAIL_PASS: your-app-password
+      # Database optimization
+      DATABASE_MAX_CONNECTIONS: 20
+      DATABASE_IDLE_TIMEOUT: 30000
+      DATABASE_CONNECTION_TIMEOUT: 10000
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    ports:
+      - "4000:4000"
+    networks:
+      - futbol_clinic_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend Next.js Service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: futbol_clinic_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api
+      NEXT_PUBLIC_BACKEND_URL: http://localhost:4000
+    ports:
+      - "3000:3000"
+    networks:
+      - futbol_clinic_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+
+# Networks
+networks:
+  futbol_clinic_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# Volumes for data persistence
+volumes:
+  postgres_data:
+    driver: local

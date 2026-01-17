@@ -1,0 +1,54 @@
+# .dockerignore para DESARROLLO
+# Menos restrictivo para permitir hot-reload
+
+# Git
+.git
+.gitignore
+
+# Dependencies (se instalan en el contenedor)
+node_modules
+
+# Build output (no necesario en dev, usamos ts-node-dev)
+dist
+
+# Environment files
+.env
+.env.production
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage
+.nyc_output
+
+# Logs
+logs
+*.log
+
+# Temporary files
+tmp
+temp
+*.tmp
+
+# Docker files
+Dockerfile
+Dockerfile.npm
+docker-compose*.yml
+
+# Documentation
+*.md
+docs
+
+# Vercel
+.vercel
+vercel.json
+

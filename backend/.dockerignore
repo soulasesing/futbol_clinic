@@ -1,0 +1,67 @@
+# Dependencies
+node_modules
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+package-lock.json
+
+# Build output
+dist
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+*.env
+
+# IDE and editor files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Testing
+tests
+*.test.ts
+*.spec.ts
+coverage
+.nyc_output
+
+# Documentation
+README.md
+docs
+*.md
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# Logs
+logs
+*.log
+
+# Temporary files
+tmp
+temp
+*.tmp
+
+# Vercel
+.vercel
+vercel.json
+
+# Misc
+.prettierrc
+.eslintrc
+.editorconfig
+tsconfig.json
+

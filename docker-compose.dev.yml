@@ -1,0 +1,122 @@
+version: '3.8'
+
+services:
+  # ============================================
+  # PostgreSQL Database - COMENTADO
+  # ============================================
+  # El usuario ya tiene una base de datos PostgreSQL corriendo en Docker
+  # Para usar la BD externa, configura DATABASE_URL más abajo
+  #
+  # Si necesitas levantar la BD aquí, descomenta este servicio:
+  #
+  # database:
+  #   image: postgres:15-alpine
+  #   container_name: futbol_clinic_db_dev
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_DB: futbol_clinic
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: postgres123
+  #     POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=scram-sha-256"
+  #   volumes:
+  #     - postgres_data_dev:/var/lib/postgresql/data
+  #     - ./database/init:/docker-entrypoint-initdb.d
+  #     - ./backend/migrations:/migrations
+  #   ports:
+  #     - "5432:5432"
+  #   networks:
+  #     - futbol_clinic_dev
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U postgres -d futbol_clinic"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+  # Backend API Service - DEVELOPMENT MODE
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: futbol_clinic_backend_dev
+    restart: unless-stopped
+    # depends_on comentado porque usamos BD externa
+    # depends_on:
+    #   database:
+    #     condition: service_healthy
+    environment:
+      NODE_ENV: development
+      # ⚠️ IMPORTANTE: Configura aquí tu DATABASE_URL con tu PostgreSQL existente
+      # Ejemplos:
+      # - Si tu BD está en otro contenedor: postgresql://user:pass@nombre_contenedor:5432/futbol_clinic
+      # - Si tu BD está en host: postgresql://user:pass@host.docker.internal:5432/futbol_clinic
+      # - Si tu BD está en red externa: postgresql://user:pass@IP:5432/futbol_clinic
+      DATABASE_URL: postgresql://postgres:postgres123@host.docker.internal:5432/futbol_clinic
+      JWT_SECRET: dev-jwt-secret-at-least-32-characters-long-for-development
+      FRONTEND_URL: http://localhost:3000
+      BACKEND_URL: http://localhost:4000
+      PORT: 4000
+      # File storage - local for development
+      BLOB_READ_WRITE_TOKEN: local-storage-token
+      # Database settings
+      DATABASE_MAX_CONNECTIONS: 20
+      DATABASE_IDLE_TIMEOUT: 30000
+      DATABASE_CONNECTION_TIMEOUT: 10000
+    volumes:
+      # Mount source code for hot-reload
+      - ./backend/src:/app/src:delegated
+      - ./backend/public:/app/public:delegated
+      # Mount node_modules as volume (don't overwrite from host)
+      - backend_node_modules:/app/node_modules
+      # Mount package.json for dependency changes
+      - ./backend/package.json:/app/package.json:ro
+      - ./backend/tsconfig.json:/app/tsconfig.json:ro
+    ports:
+      - "4000:4000"
+      # Debugging port
+      - "9229:9229"
+    networks:
+      - futbol_clinic_dev
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    # Increase shared memory for better performance
+    shm_size: '256m'
+
+  # ============================================
+  # pgAdmin - COMENTADO (opcional)
+  # ============================================
+  # Si necesitas pgAdmin, descomenta este servicio
+  #
+  # pgadmin:
+  #   image: dpage/pgadmin4:latest
+  #   container_name: futbol_clinic_pgadmin_dev
+  #   restart: unless-stopped
+  #   environment:
+  #     PGADMIN_DEFAULT_EMAIL: admin@futbolclinic.com
+  #     PGADMIN_DEFAULT_PASSWORD: admin123
+  #     PGADMIN_CONFIG_SERVER_MODE: 'False'
+  #   ports:
+  #     - "5050:80"
+  #   networks:
+  #     - futbol_clinic_dev
+  #   volumes:
+  #     - pgadmin_data_dev:/var/lib/pgadmin
+
+# Networks
+networks:
+  futbol_clinic_dev:
+    driver: bridge
+    name: futbol_clinic_dev_network
+
+# Volumes for data persistence
+volumes:
+  # postgres_data_dev:  # Comentado - usamos BD externa
+  #   driver: local
+  backend_node_modules:
+    driver: local
+  # pgadmin_data_dev:  # Comentado - pgAdmin no se usa
+  #   driver: local
+

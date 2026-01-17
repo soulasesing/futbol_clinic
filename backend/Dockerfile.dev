@@ -1,0 +1,46 @@
+# ============================================
+# Dockerfile para DESARROLLO - Futbol Clinic Backend
+# Con hot-reload y solución SSL
+# ============================================
+
+FROM node:20-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Install dependencies for native modules and CA certificates
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    ca-certificates
+
+# Update CA certificates to fix SSL issues
+RUN update-ca-certificates
+
+# Copy package files first for better caching
+COPY package.json yarn.lock ./
+
+# Configure yarn to handle SSL and install ALL dependencies (including dev)
+# strict-ssl false is needed for some corporate networks/firewalls
+RUN yarn config set strict-ssl false && \
+    yarn config set network-timeout 300000 && \
+    yarn install --frozen-lockfile --network-timeout 100000
+
+# Create uploads directory
+RUN mkdir -p /app/public/uploads
+
+# Expose port for development
+EXPOSE 4000
+
+# Expose debugging port
+EXPOSE 9229
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:4000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})" || exit 1
+
+# Run in development mode with hot-reload
+# ts-node-dev watches for file changes and restarts automatically
+CMD ["yarn", "dev"]
+
