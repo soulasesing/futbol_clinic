@@ -6,12 +6,32 @@ Plataforma multi-tenant para gestión de escuelas de fútbol.
 
 - `/backend`: API RESTful, Node.js, TypeScript, Express, PostgreSQL
 - `/frontend`: Next.js, TypeScript, TailwindCSS
-- `docker-compose.yml`: Orquestación de servicios
+- `docker-compose.yml`: Orquestación de servicios (producción)
+- `docker-compose.dev.yml`: Orquestación de servicios (desarrollo)
 
-## Inicio rápido
+## 🚀 Inicio Rápido - Desarrollo
 
-1. Clona el repositorio
-2. Lee los README de cada módulo para instrucciones específicas
+```bash
+# Script helper (recomendado)
+chmod +x dev.sh
+./dev.sh start
+
+# O con docker-compose directamente
+docker-compose -f docker-compose.dev.yml up --build
+```
+
+**Backend**: http://localhost:4000  
+**pgAdmin**: http://localhost:5050  
+**PostgreSQL**: localhost:5432
+
+📚 **Documentación Completa de Desarrollo**: [`README-DESARROLLO.md`](./README-DESARROLLO.md)
+
+## 📖 Guías Disponibles
+
+- **[README-DESARROLLO.md](./README-DESARROLLO.md)** - Guía principal de desarrollo
+- **[INICIO-RAPIDO-DEV.md](./INICIO-RAPIDO-DEV.md)** - Inicio rápido en 3 pasos
+- **[SOLUCION-SSL.md](./SOLUCION-SSL.md)** - Solución al error SSL de Docker
+- **[backend/README-DEV.md](./backend/README-DEV.md)** - Documentación completa del backend
 
 SuperAdmin
 ##########
