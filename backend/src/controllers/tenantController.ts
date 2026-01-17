@@ -47,4 +47,45 @@ export const getTenantDetail = async (req: Request, res: Response) => {
   } catch (error: any) {
     res.status(400).json({ message: error.message });
   }
+};
+
+// Admin user management controllers
+export const getTenantAdmins = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const admins = await tenantService.getTenantAdmins(id);
+    res.json(admins);
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const createTenantAdmin = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const admin = await tenantService.createTenantAdmin(id, req.body);
+    res.status(201).json(admin);
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const updateTenantAdmin = async (req: Request, res: Response) => {
+  try {
+    const { id, adminId } = req.params;
+    const admin = await tenantService.updateTenantAdmin(id, adminId, req.body);
+    res.json(admin);
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const deleteTenantAdmin = async (req: Request, res: Response) => {
+  try {
+    const { id, adminId } = req.params;
+    await tenantService.deleteTenantAdmin(id, adminId);
+    res.json({ message: 'Administrador eliminado correctamente' });
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
 }; 

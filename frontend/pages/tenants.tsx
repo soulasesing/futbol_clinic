@@ -11,6 +11,14 @@ interface Tenant {
   responsable_nombre?: string;
 }
 
+interface AdminUser {
+  id: string;
+  nombre: string;
+  email: string;
+  is_active: boolean;
+  created_at: string;
+}
+
 const PAGE_SIZE = 10;
 
 const uploadImage = async (file: File): Promise<string | null> => {
@@ -42,6 +50,11 @@ const TenantsPage: React.FC = () => {
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
   const [flippedId, setFlippedId] = useState<string | null>(null);
   const [responsableWarning, setResponsableWarning] = useState(false);
+  const [showAdminModal, setShowAdminModal] = useState(false);
+  const [admins, setAdmins] = useState<AdminUser[]>([]);
+  const [adminFormLoading, setAdminFormLoading] = useState(false);
+  const [adminFormError, setAdminFormError] = useState('');
+  const [editingAdmin, setEditingAdmin] = useState<AdminUser | null>(null);
 
   // Fetch tenants
   const fetchTenants = () => {
@@ -193,32 +206,55 @@ const TenantsPage: React.FC = () => {
                             )}
                           </div>
                           {/* Botones de acción */}
-                          <div className="flex gap-2 mt-4 justify-center">
-                            <button
-                              onClick={e => {
-                                e.stopPropagation();
-                                setEditTenant(tenant);
-                                setShowForm(true);
-                                setLogoPreview(tenant.logo_url || null);
-                                setBannerPreview(tenant.banner_url || null);
-                                setFlippedId(null);
-                              }}
-                              className="px-3 py-1 rounded bg-emerald-100 text-emerald-700 font-bold hover:bg-emerald-200"
-                            >
-                              Editar
-                            </button>
+                          <div className="flex flex-col gap-2 mt-4">
+                            <div className="flex gap-2 justify-center">
+                              <button
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  setEditTenant(tenant);
+                                  setShowForm(true);
+                                  setLogoPreview(tenant.logo_url || null);
+                                  setBannerPreview(tenant.banner_url || null);
+                                  setFlippedId(null);
+                                }}
+                                className="px-3 py-1 rounded bg-emerald-100 text-emerald-700 font-bold hover:bg-emerald-200 text-sm"
+                              >
+                                Editar Escuela
+                              </button>
+                              <button
+                                onClick={async e => {
+                                  e.stopPropagation();
+                                  if (confirm('¿Seguro que deseas eliminar esta escuela?')) {
+                                    await fetch(`/api/tenants/${tenant.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${jwt}` } });
+                                    fetchTenants();
+                                    setFlippedId(null);
+                                  }
+                                }}
+                                className="px-3 py-1 rounded bg-red-100 text-red-700 font-bold hover:bg-red-200 text-sm"
+                              >
+                                Eliminar
+                              </button>
+                            </div>
                             <button
                               onClick={async e => {
                                 e.stopPropagation();
-                                if (confirm('¿Seguro que deseas eliminar esta escuela?')) {
-                                  await fetch(`/api/tenants/${tenant.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${jwt}` } });
-                                  fetchTenants();
-                                  setFlippedId(null);
+                                setSelectedTenant(tenant);
+                                setShowAdminModal(true);
+                                setEditingAdmin(null);
+                                try {
+                                  const res = await fetch(`/api/tenants/${tenant.id}/admins`, {
+                                    headers: { Authorization: `Bearer ${jwt}` }
+                                  });
+                                  if (!res.ok) throw new Error('Error al cargar administradores');
+                                  const data = await res.json();
+                                  setAdmins(Array.isArray(data) ? data : []);
+                                } catch {
+                                  setAdmins([]);
                                 }
                               }}
-                              className="px-3 py-1 rounded bg-red-100 text-red-700 font-bold hover:bg-red-200"
+                              className="px-3 py-1 rounded bg-blue-100 text-blue-700 font-bold hover:bg-blue-200 text-sm"
                             >
-                              Eliminar
+                              Gestionar Administradores
                             </button>
                           </div>
                         </>
@@ -388,8 +424,240 @@ const TenantsPage: React.FC = () => {
           )}
         </div>
       </main>
-      {/* Modal de detalle */}
-      {/* (El modal de detalle anterior ya no es necesario, ahora el detalle está en el flip card) */}
+      
+      {/* Modal de Administradores */}
+      {showAdminModal && selectedTenant && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold text-emerald-700">
+                Administradores de {selectedTenant.nombre}
+              </h2>
+              <button
+                onClick={() => {
+                  setShowAdminModal(false);
+                  setSelectedTenant(null);
+                  setAdmins([]);
+                  setEditingAdmin(null);
+                  setAdminFormError('');
+                }}
+                className="text-emerald-700 hover:text-red-500 text-2xl font-bold"
+                aria-label="Cerrar"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Lista de administradores */}
+            <div className="mb-4">
+              <h3 className="font-semibold text-gray-700 mb-2">Administradores ({admins.length})</h3>
+              {admins.length === 0 ? (
+                <div className="text-gray-400 text-center py-4">No hay administradores</div>
+              ) : (
+                <div className="space-y-2">
+                  {admins.map(admin => (
+                    <div
+                      key={admin.id}
+                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
+                    >
+                      <div>
+                        <div className="font-semibold text-gray-800">{admin.nombre}</div>
+                        <div className="text-sm text-gray-600">{admin.email}</div>
+                        <div className="text-xs text-gray-500">
+                          {admin.is_active ? (
+                            <span className="text-green-600">● Activo</span>
+                          ) : (
+                            <span className="text-red-600">● Inactivo</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={async () => {
+                            setEditingAdmin(admin);
+                            setAdminFormError('');
+                          }}
+                          className="px-3 py-1 rounded bg-emerald-100 text-emerald-700 font-bold hover:bg-emerald-200 text-sm"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (confirm(`¿Seguro que deseas eliminar a ${admin.nombre}?`)) {
+                              try {
+                                const res = await fetch(
+                                  `/api/tenants/${selectedTenant.id}/admins/${admin.id}`,
+                                  {
+                                    method: 'DELETE',
+                                    headers: { Authorization: `Bearer ${jwt}` }
+                                  }
+                                );
+                                if (!res.ok) {
+                                  const data = await res.json();
+                                  throw new Error(data.message || 'Error al eliminar');
+                                }
+                                // Refresh admins list
+                                const adminsRes = await fetch(`/api/tenants/${selectedTenant.id}/admins`, {
+                                  headers: { Authorization: `Bearer ${jwt}` }
+                                });
+                                const adminsData = await adminsRes.json();
+                                setAdmins(Array.isArray(adminsData) ? adminsData : []);
+                                setEditingAdmin(null);
+                              } catch (err: any) {
+                                setAdminFormError(err.message || 'Error al eliminar administrador');
+                              }
+                            }
+                          }}
+                          className="px-3 py-1 rounded bg-red-100 text-red-700 font-bold hover:bg-red-200 text-sm"
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Formulario para crear/editar administrador */}
+            <div className="border-t pt-4">
+              <h3 className="font-semibold text-gray-700 mb-3">
+                {editingAdmin ? 'Editar Administrador' : 'Nuevo Administrador'}
+              </h3>
+              <form
+                onSubmit={async e => {
+                  e.preventDefault();
+                  setAdminFormLoading(true);
+                  setAdminFormError('');
+                  try {
+                    const form = e.target as HTMLFormElement;
+                    const nombre = (form.elements.namedItem('admin_nombre') as HTMLInputElement).value;
+                    const email = (form.elements.namedItem('admin_email') as HTMLInputElement).value;
+                    const password = (form.elements.namedItem('admin_password') as HTMLInputElement).value;
+                    const is_active = (form.elements.namedItem('admin_active') as HTMLInputElement)?.checked ?? true;
+
+                    if (editingAdmin) {
+                      // Update admin
+                      const payload: any = { nombre, email, is_active };
+                      if (password) payload.password = password;
+
+                      const res = await fetch(
+                        `/api/tenants/${selectedTenant.id}/admins/${editingAdmin.id}`,
+                        {
+                          method: 'PUT',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${jwt}`
+                          },
+                          body: JSON.stringify(payload)
+                        }
+                      );
+                      if (!res.ok) {
+                        const data = await res.json();
+                        throw new Error(data.message || 'Error al actualizar');
+                      }
+                    } else {
+                      // Create admin
+                      if (!password) {
+                        throw new Error('La contraseña es requerida para nuevos administradores');
+                      }
+                      const res = await fetch(`/api/tenants/${selectedTenant.id}/admins`, {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          Authorization: `Bearer ${jwt}`
+                        },
+                        body: JSON.stringify({ nombre, email, password, is_active: true })
+                      });
+                      if (!res.ok) {
+                        const data = await res.json();
+                        throw new Error(data.message || 'Error al crear');
+                      }
+                    }
+
+                    // Refresh admins list
+                    const adminsRes = await fetch(`/api/tenants/${selectedTenant.id}/admins`, {
+                      headers: { Authorization: `Bearer ${jwt}` }
+                    });
+                    const adminsData = await adminsRes.json();
+                    setAdmins(Array.isArray(adminsData) ? adminsData : []);
+                    setEditingAdmin(null);
+                    (e.target as HTMLFormElement).reset();
+                  } catch (err: any) {
+                    setAdminFormError(err.message);
+                  } finally {
+                    setAdminFormLoading(false);
+                  }
+                }}
+                className="space-y-3"
+              >
+                <input
+                  name="admin_nombre"
+                  type="text"
+                  defaultValue={editingAdmin?.nombre || ''}
+                  placeholder="Nombre del administrador"
+                  required
+                  className="w-full rounded-lg border border-emerald-200 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                />
+                <input
+                  name="admin_email"
+                  type="email"
+                  defaultValue={editingAdmin?.email || ''}
+                  placeholder="Email del administrador"
+                  required
+                  className="w-full rounded-lg border border-emerald-200 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                />
+                <input
+                  name="admin_password"
+                  type="password"
+                  placeholder={editingAdmin ? 'Nueva contraseña (dejar vacío para no cambiar)' : 'Contraseña'}
+                  required={!editingAdmin}
+                  className="w-full rounded-lg border border-emerald-200 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                />
+                {editingAdmin && (
+                  <label className="flex items-center gap-2">
+                    <input
+                      name="admin_active"
+                      type="checkbox"
+                      defaultChecked={editingAdmin.is_active}
+                      className="rounded"
+                    />
+                    <span className="text-sm text-gray-700">Usuario activo</span>
+                  </label>
+                )}
+                {adminFormError && (
+                  <div className="text-red-600 text-sm text-center">{adminFormError}</div>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    disabled={adminFormLoading}
+                    className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold py-2 rounded-lg shadow hover:scale-105 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-400 disabled:opacity-50"
+                  >
+                    {adminFormLoading
+                      ? 'Guardando...'
+                      : editingAdmin
+                      ? 'Actualizar'
+                      : 'Crear Administrador'}
+                  </button>
+                  {editingAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingAdmin(null);
+                        setAdminFormError('');
+                      }}
+                      className="px-4 py-2 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300"
+                    >
+                      Cancelar
+                    </button>
+                  )}
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

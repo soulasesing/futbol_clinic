@@ -36,8 +36,17 @@ const PAGE_SIZE = 10;
 const uploadImage = async (file: File): Promise<string | null> => {
   const formData = new FormData();
   formData.append('file', file);
-  const res = await fetch('/api/upload', { method: 'POST', body: formData });
-  if (!res.ok) throw new Error('Error al subir imagen');
+  const res = await fetch('/api/upload', { 
+    method: 'POST', 
+    body: formData,
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem('jwt') || ''}`
+    }
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ message: 'Error al subir imagen' }));
+    throw new Error(errorData.message || 'Error al subir imagen');
+  }
   const data = await res.json();
   return data.url;
 };
@@ -75,6 +84,7 @@ const PlayersPage: React.FC = () => {
   const [showDocModal, setShowDocModal] = useState(false);
   const [selectedDocUrl, setSelectedDocUrl] = useState<string>('');
   const [teams, setTeams] = useState<Team[]>([]);
+  const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
 
   // Fetch teams
   const fetchTeams = () => {
@@ -223,8 +233,16 @@ const PlayersPage: React.FC = () => {
                       onClick={() => setSelectedPlayer(player)}
                     >
                       <td className="p-2">
-                        {player.foto_url ? (
-                          <img src={player.foto_url} alt="Foto" className="w-10 h-10 rounded-full object-cover border" />
+                        {player.foto_url && !imageErrors.has(player.id) ? (
+                          <img 
+                            src={player.foto_url} 
+                            alt="Foto" 
+                            className="w-10 h-10 rounded-full object-cover border"
+                            onError={() => {
+                              // Mark this image as failed
+                              setImageErrors(prev => new Set(prev).add(player.id));
+                            }}
+                          />
                         ) : (
                           <span className="w-10 h-10 flex items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 text-white font-bold text-lg shadow">
                             {player.nombre.charAt(0)}

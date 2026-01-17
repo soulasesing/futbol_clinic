@@ -31,14 +31,28 @@ export const setPlayerTeams = async (tenantId: string, playerId: string, teamIds
 export const createPlayer = async (tenantId: string, data: any) => {
   const { 
     nombre, apellido, cedula, fecha_nacimiento, foto_url, document_url, 
-    team_ids, correo_jugador, padre_nombre, padre_apellido, padre_email, 
+    team_ids, categoria, correo_jugador, padre_nombre, padre_apellido, padre_email, 
     padre_telefono, madre_nombre, madre_apellido, madre_email, madre_telefono 
   } = data;
-  let categoria = null;
-  if (Array.isArray(team_ids) && team_ids.length > 0) {
-    const teamRes = await pool.query('SELECT nombre FROM teams WHERE id = $1', [team_ids[0]]);
-    categoria = teamRes.rows[0]?.nombre || null;
+  
+  // Determine categoria: use provided value, or get from first team, or throw error
+  let finalCategoria = categoria;
+  
+  if (!finalCategoria) {
+    if (Array.isArray(team_ids) && team_ids.length > 0) {
+      const teamRes = await pool.query('SELECT nombre FROM teams WHERE id = $1 AND tenant_id = $2', [team_ids[0], tenantId]);
+      if (teamRes.rowCount && teamRes.rowCount > 0) {
+        finalCategoria = teamRes.rows[0].nombre;
+      }
+    }
+    
+    // If still no categoria, use a default or require team selection
+    if (!finalCategoria) {
+      // Use default categoria if no team is selected
+      finalCategoria = 'Sin categoría';
+    }
   }
+  
   const result = await pool.query(
     `INSERT INTO players (
       id, tenant_id, nombre, apellido, cedula, fecha_nacimiento, categoria, 
@@ -48,7 +62,7 @@ export const createPlayer = async (tenantId: string, data: any) => {
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
     RETURNING *`,
     [
-      uuidv4(), tenantId, nombre, apellido, cedula, fecha_nacimiento, categoria,
+      uuidv4(), tenantId, nombre, apellido, cedula, fecha_nacimiento, finalCategoria,
       foto_url, document_url, correo_jugador, padre_nombre, padre_apellido,
       padre_email, padre_telefono, madre_nombre, madre_apellido, madre_email, madre_telefono
     ]
@@ -63,14 +77,32 @@ export const createPlayer = async (tenantId: string, data: any) => {
 export const updatePlayer = async (tenantId: string, id: string, data: any) => {
   const { 
     nombre, apellido, cedula, fecha_nacimiento, foto_url, document_url, 
-    team_ids, correo_jugador, padre_nombre, padre_apellido, padre_email, 
+    team_ids, categoria, correo_jugador, padre_nombre, padre_apellido, padre_email, 
     padre_telefono, madre_nombre, madre_apellido, madre_email, madre_telefono 
   } = data;
-  let categoria = null;
-  if (Array.isArray(team_ids) && team_ids.length > 0) {
-    const teamRes = await pool.query('SELECT nombre FROM teams WHERE id = $1', [team_ids[0]]);
-    categoria = teamRes.rows[0]?.nombre || null;
+  
+  // Determine categoria: use provided value, or get from first team, or keep existing
+  let finalCategoria = categoria;
+  
+  if (!finalCategoria) {
+    if (Array.isArray(team_ids) && team_ids.length > 0) {
+      const teamRes = await pool.query('SELECT nombre FROM teams WHERE id = $1 AND tenant_id = $2', [team_ids[0], tenantId]);
+      if (teamRes.rowCount && teamRes.rowCount > 0) {
+        finalCategoria = teamRes.rows[0].nombre;
+      }
+    }
+    
+    // If still no categoria, get existing categoria from player
+    if (!finalCategoria) {
+      const existingPlayer = await pool.query('SELECT categoria FROM players WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+      if (existingPlayer.rowCount && existingPlayer.rowCount > 0) {
+        finalCategoria = existingPlayer.rows[0].categoria;
+      } else {
+        finalCategoria = 'Sin categoría';
+      }
+    }
   }
+  
   const result = await pool.query(
     `UPDATE players SET 
       nombre = $1, apellido = $2, cedula = $3, fecha_nacimiento = $4, 
@@ -79,7 +111,7 @@ export const updatePlayer = async (tenantId: string, id: string, data: any) => {
       madre_nombre = $13, madre_apellido = $14, madre_email = $15, madre_telefono = $16
     WHERE id = $17 AND tenant_id = $18 RETURNING *`,
     [
-      nombre, apellido, cedula, fecha_nacimiento, categoria, foto_url, 
+      nombre, apellido, cedula, fecha_nacimiento, finalCategoria, foto_url, 
       document_url, correo_jugador, padre_nombre, padre_apellido, padre_email, 
       padre_telefono, madre_nombre, madre_apellido, madre_email, madre_telefono,
       id, tenantId

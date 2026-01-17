@@ -27,4 +27,13 @@ export const requireAdminAuth = (req: AuthRequest, res: Response, next: NextFunc
     }
     next();
   });
+};
+
+export const requireSuperAdminAuth = (req: AuthRequest, res: Response, next: NextFunction) => {
+  requireAuth(req, res, () => {
+    if (req.user?.role !== 'super_admin') {
+      return res.status(403).json({ message: 'Super admin role required' });
+    }
+    next();
+  });
 }; 

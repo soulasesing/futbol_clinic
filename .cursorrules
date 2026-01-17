@@ -34,6 +34,7 @@ The user asks questions about the following coding languages and technologies:
 - Use descriptive variable and function/const names. Event functions should be named with a "handle" prefix, like "handleClick" for onClick and "handleKeyDown" for onKeyDown.
 - Use consts instead of functions, for example, "const toggle = () =>". Also, define a type if possible.
 - Always use TypeScript types/interfaces - avoid `any` when possible.
+- Use explicit return types for functions when helpful for clarity.
 
 #### Frontend (React/Next.js)
 - Always use Tailwind classes for styling HTML elements; avoid using CSS files or inline styles (except for dynamic theming via CSS variables).
@@ -42,39 +43,177 @@ The user asks questions about the following coding languages and technologies:
 - Use React Context (AuthContext, BrandingContext) for global state.
 - API calls must include JWT: `headers: { Authorization: \`Bearer ${jwt}\` }`
 - Use dynamic theme classes: `.theme-primary`, `.theme-secondary`, `.theme-gradient`, etc.
+- Always handle loading and error states in components.
+- Use TypeScript interfaces for component props and data structures.
+- Use `useEffect` with proper dependency arrays.
+- Check authentication with `useAuth()` hook and redirect if not authenticated.
+- Use `useRouter()` from Next.js for navigation.
+- Widget components should fetch their own data and handle loading/error states internally.
+- Use consistent date formatting: `toLocaleDateString('es-ES', {...})` for Spanish locale.
+- Empty states should have friendly messages and icons.
+- Loading states should show spinners or skeleton screens.
 
 #### Backend (Node.js/Express)
-- Follow 3-layer architecture: Routes → Controllers → Services
-- Always apply middleware in correct order: `requireAuth` → `setTenant` → controller
-- Use `AuthRequest` type for authenticated routes (extends Request with `user` property)
-- Services handle database queries; controllers handle HTTP request/response
-- All tenant-scoped tables must have RLS policies
-- Use `pool.query()` for database operations (from `utils/db.ts`)
-- Error handling: `try/catch` with `res.status(400).json({ message: error.message })`
-- JWT utilities: Use `jwtUtil.sign()` and `jwtUtil.verify()` from `utils/jwt.ts`
+
+**Route Patterns:**
+- Use `router.use(requireAuth, setTenant)` for middleware grouping (preferred pattern).
+- Alternative: Apply middleware per route if needed: `router.get('/', requireAuth, setTenant, controller.method)`.
+- Use `requireAdminAuth` instead of `requireAuth` for admin-only routes.
+- Register routes in `app.ts` after middleware setup.
+
+**Controller Patterns:**
+- Controllers are thin - extract `tenantId` from `req.user?.tenantId` and pass to services.
+- Use `AuthRequest` type (extends Request with `user` property).
+- Error handling: `try/catch` with `res.status(400).json({ message: error.message })`.
+- Use appropriate HTTP status codes: 200 (success), 201 (created), 204 (no content), 400 (bad request), 401 (unauthorized), 403 (forbidden), 404 (not found), 500 (server error).
+- Extract query parameters: `const limit = parseInt(req.query.limit as string) || 10`.
+- Extract route parameters: `req.params.id`.
+
+**Service Patterns:**
+- Services handle all business logic and database operations.
+- All service functions take `tenantId: string` as the first parameter.
+- Use `pool.query()` for simple database operations.
+- Use `pool.connect()` with transactions for complex operations (multiple queries that must succeed/fail together):
+  ```typescript
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    // ... multiple queries ...
+    await client.query('COMMIT');
+    return results;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+  ```
+- Always use parameterized queries: `pool.query('SELECT * FROM table WHERE id = $1 AND tenant_id = $2', [id, tenantId])`.
+- Use `uuidv4()` from 'uuid' for generating IDs: `uuidv4()`.
+- Throw errors with descriptive messages: `throw new Error('Entity not found')`.
+- Check `result.rowCount` before accessing `result.rows[0]`.
+- For dynamic UPDATE queries, build SET clause dynamically:
+  ```typescript
+  const setClause = [];
+  const values = [];
+  let paramCount = 1;
+  Object.entries(updates).forEach(([key, value]) => {
+    if (value !== undefined) {
+      setClause.push(`${key} = $${paramCount}`);
+      values.push(value);
+      paramCount++;
+    }
+  });
+  ```
+- Use JOINs for related data: `LEFT JOIN teams tl ON m.equipo_local_id = tl.id`.
+- Use subqueries for aggregations: `(SELECT COUNT(*) FROM ...) as total_count`.
+- Order results consistently: `ORDER BY fecha DESC, kickoff_time DESC`.
+
+**Special Patterns:**
+- Recurring trainings: Iterate dates and create multiple records for each matching day of week.
+- Match convocations: Use transactions to ensure data consistency when adding multiple players.
+- Status management: Use enums/strings like 'convocado', 'confirmado', 'ausente', 'lesionado'.
+- Date handling: Use PostgreSQL date functions like `CURRENT_DATE`, `NOW()`, `EXTRACT(YEAR FROM AGE(...))`.
 
 #### Database
-- All migrations must be numbered sequentially in `backend/migrations/`
+- All migrations must be numbered sequentially in `backend/migrations/` (e.g., `018_new_feature.sql`).
 - New tenant-scoped tables must include:
   - `tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE`
-  - RLS policy: `tenant_isolation_<table_name>`
-  - Trigger: `set_tenant_id_<table_name>`
-- Use UUID primary keys with `gen_random_uuid()`
-- Super admin users have `tenant_id = NULL`
+  - RLS policy: `CREATE POLICY tenant_isolation_<table_name> ON <table_name> USING (tenant_id = current_setting('app.current_tenant')::uuid);`
+  - Trigger: `CREATE TRIGGER set_tenant_id_<table_name> BEFORE INSERT ON <table_name> FOR EACH ROW EXECUTE FUNCTION set_tenant_id();`
+  - Enable RLS: `ALTER TABLE <table_name> ENABLE ROW LEVEL SECURITY;`
+- Use UUID primary keys with `gen_random_uuid()`.
+- Super admin users have `tenant_id = NULL`.
+- Use indexes for frequently queried columns: `CREATE INDEX idx_table_column ON table(column);`
+- Use UNIQUE constraints where appropriate: `UNIQUE(match_id, player_id)`.
+- Create database functions for complex queries when reusable.
+- Use triggers for automatic `updated_at` timestamps:
+  ```sql
+  CREATE TRIGGER update_table_updated_at
+  BEFORE UPDATE ON table
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  ```
 
 #### Multi-Tenancy
-- Always use `setTenant` middleware on tenant-scoped routes
-- Super admin routes should NOT use `setTenant` middleware
-- Database queries automatically filtered by RLS - no manual tenant filtering needed
-- JWT contains `tenantId` - extracted in `requireAuth` middleware
+- Always use `setTenant` middleware on tenant-scoped routes.
+- Super admin routes should NOT use `setTenant` middleware.
+- Database queries automatically filtered by RLS - no manual tenant filtering needed in WHERE clauses (RLS handles it).
+- However, services still receive `tenantId` parameter for explicit validation and clarity.
+- JWT contains `tenantId` - extracted in `requireAuth` middleware.
+- Super admin can access all tenants by bypassing RLS (tenant_id = NULL).
 
 #### File Upload
-- Use `/api/upload` endpoint with `FormData`
-- Files stored in Vercel Blob Storage
-- Returns public URL to store in database
+- Use `/api/upload` endpoint with `FormData`.
+- Files stored in Vercel Blob Storage.
+- Returns public URL to store in database.
+- Frontend helper pattern:
+  ```typescript
+  const uploadImage = async (file: File): Promise<string | null> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData,
+      headers: { Authorization: `Bearer ${jwt}` }
+    });
+    const data = await res.json();
+    return data.url;
+  };
+  ```
 
 #### Styling
-- Primary: Tailwind utility classes
-- Theming: CSS custom properties (--color-primary, --color-secondary)
-- Custom classes: Defined in `globals.css` for theme utilities
-- Avoid: Separate CSS files, inline styles (except dynamic values)
+- Primary: Tailwind utility classes.
+- Theming: CSS custom properties (--color-primary, --color-secondary).
+- Custom classes: Defined in `globals.css` for theme utilities.
+- Avoid: Separate CSS files, inline styles (except dynamic values).
+- Use consistent color scheme: emerald, green, teal gradients.
+- Use modern UI patterns:
+  - `rounded-3xl` for large border radius
+  - `bg-white/80 backdrop-blur-sm` for glassmorphism
+  - `shadow-xl` with `hover:shadow-2xl` for depth
+  - `transition-all duration-300` for smooth animations
+  - `hover:scale-105` for interactive elements
+- Use responsive design: `grid-cols-1 md:grid-cols-2 lg:grid-cols-3`.
+- Widget components should have consistent styling: `bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl p-8 border border-emerald-100`.
+
+#### Error Handling
+- Backend: Services throw errors, controllers catch and return appropriate HTTP status.
+- Frontend: Try/catch in async functions, display user-friendly error messages.
+- Always check response.ok before parsing JSON: `if (!response.ok) throw new Error(...)`.
+- Use consistent error message format: `{ message: string }`.
+- Log errors to console in development: `console.error('Error:', error)`.
+
+#### TypeScript Patterns
+- Define interfaces for all data structures.
+- Use `React.FC<Props>` for component types.
+- Use optional chaining: `req.user?.tenantId`.
+- Use non-null assertion sparingly: `req.user!.tenantId` (only when certain).
+- Use type guards when needed.
+- Export interfaces/types from service files when shared.
+
+#### Testing Considerations
+- Backend: Test services and controllers separately.
+- Frontend: Test component rendering and user interactions.
+- Test multi-tenant isolation with different tenant contexts.
+- Test error scenarios and edge cases.
+
+#### Performance
+- Use connection pooling (already configured in `utils/db.ts`).
+- Implement pagination for large datasets: `LIMIT $1 OFFSET $2`.
+- Use indexes on foreign keys and frequently queried columns.
+- Avoid N+1 queries - use JOINs or batch queries.
+- Frontend: Lazy load components when appropriate.
+- Frontend: Use `useMemo` and `useCallback` for expensive computations.
+
+#### Security
+- Always validate input data.
+- Use parameterized queries (prevents SQL injection).
+- Hash passwords with bcrypt before storage.
+- Verify JWT tokens in protected routes.
+- Check user permissions (admin vs regular user).
+- Sanitize file uploads.
+- Never expose sensitive data in error messages.
+
+---
+
+**Remember**: This is a multi-tenant application where data isolation is critical. Always test with multiple tenants to ensure no data leakage. Prioritize security, user experience, and code quality. Refer to PROJECT_CONTEXT.md for detailed architecture documentation.
