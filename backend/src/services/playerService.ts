@@ -1,59 +1,83 @@
-import { pool } from '../utils/db';
+import { TransactionClient, withTenantTransaction } from '../utils/db';
 import { v4 as uuidv4 } from 'uuid';
 
-export const getPlayers = async (tenantId: string) => {
-  const result = await pool.query('SELECT * FROM players WHERE tenant_id = $1', [tenantId]);
-  return result.rows;
-};
+export const getPlayers = async (tenantId: string) =>
+  withTenantTransaction(tenantId, async (client) => {
+    const result = await client.query('SELECT * FROM players WHERE tenant_id = $1', [tenantId]);
+    return result.rows;
+  });
 
-export const getPlayerTeams = async (tenantId: string, playerId: string) => {
-  const result = await pool.query(
+export const getPlayerTeams = async (tenantId: string, playerId: string) =>
+  withTenantTransaction(tenantId, async (client) => {
+  const result = await client.query(
     `SELECT t.* FROM teams t
      INNER JOIN player_teams pt ON pt.team_id = t.id
-     WHERE pt.player_id = $1 AND pt.tenant_id = $2`,
+     WHERE pt.player_id = $1 AND pt.tenant_id = $2 AND t.tenant_id = $2`,
     [playerId, tenantId]
   );
   return result.rows;
-};
+  });
 
-export const setPlayerTeams = async (tenantId: string, playerId: string, teamIds: string[]) => {
+const setPlayerTeamsWithClient = async (
+  client: TransactionClient,
+  tenantId: string,
+  playerId: string,
+  teamIds: string[]
+) => {
   // Eliminar relaciones actuales
-  await pool.query('DELETE FROM player_teams WHERE player_id = $1 AND tenant_id = $2', [playerId, tenantId]);
+  await client.query('DELETE FROM player_teams WHERE player_id = $1 AND tenant_id = $2', [playerId, tenantId]);
   // Insertar nuevas relaciones
   for (const teamId of teamIds) {
-    await pool.query(
-      'INSERT INTO player_teams (tenant_id, player_id, team_id) VALUES ($1, $2, $3)',
+    await client.query(
+      `INSERT INTO player_teams (tenant_id, player_id, team_id)
+       SELECT $1, p.id, t.id
+       FROM players p
+       JOIN teams t ON t.id = $3 AND t.tenant_id = $1
+       WHERE p.id = $2 AND p.tenant_id = $1`,
       [tenantId, playerId, teamId]
     );
   }
 };
 
-export const createPlayer = async (tenantId: string, data: any) => {
+export const setPlayerTeams = async (tenantId: string, playerId: string, teamIds: string[]) =>
+  withTenantTransaction(tenantId, (client) =>
+    setPlayerTeamsWithClient(client, tenantId, playerId, teamIds)
+  );
+
+const resolveCategory = async (
+  client: TransactionClient,
+  tenantId: string,
+  requestedCategory: string | undefined,
+  teamIds: unknown,
+  playerId?: string
+): Promise<string> => {
+  if (requestedCategory) return requestedCategory;
+  if (Array.isArray(teamIds) && teamIds.length > 0) {
+    const teamResult = await client.query(
+      'SELECT nombre FROM teams WHERE id = $1 AND tenant_id = $2',
+      [teamIds[0], tenantId]
+    );
+    if (teamResult.rows[0]?.nombre) return teamResult.rows[0].nombre;
+  }
+  if (playerId) {
+    const playerResult = await client.query(
+      'SELECT categoria FROM players WHERE id = $1 AND tenant_id = $2',
+      [playerId, tenantId]
+    );
+    if (playerResult.rows[0]?.categoria) return playerResult.rows[0].categoria;
+  }
+  return 'Sin categoría';
+};
+
+export const createPlayer = async (tenantId: string, data: any) =>
+  withTenantTransaction(tenantId, async (client) => {
   const { 
     nombre, apellido, cedula, fecha_nacimiento, foto_url, document_url, 
     team_ids, categoria, correo_jugador, padre_nombre, padre_apellido, padre_email, 
     padre_telefono, madre_nombre, madre_apellido, madre_email, madre_telefono 
   } = data;
-  
-  // Determine categoria: use provided value, or get from first team, or throw error
-  let finalCategoria = categoria;
-  
-  if (!finalCategoria) {
-    if (Array.isArray(team_ids) && team_ids.length > 0) {
-      const teamRes = await pool.query('SELECT nombre FROM teams WHERE id = $1 AND tenant_id = $2', [team_ids[0], tenantId]);
-      if (teamRes.rowCount && teamRes.rowCount > 0) {
-        finalCategoria = teamRes.rows[0].nombre;
-      }
-    }
-    
-    // If still no categoria, use a default or require team selection
-    if (!finalCategoria) {
-      // Use default categoria if no team is selected
-      finalCategoria = 'Sin categoría';
-    }
-  }
-  
-  const result = await pool.query(
+  const finalCategoria = await resolveCategory(client, tenantId, categoria, team_ids);
+  const result = await client.query(
     `INSERT INTO players (
       id, tenant_id, nombre, apellido, cedula, fecha_nacimiento, categoria, 
       foto_url, document_url, correo_jugador, padre_nombre, padre_apellido, 
@@ -69,41 +93,20 @@ export const createPlayer = async (tenantId: string, data: any) => {
   );
   const player = result.rows[0];
   if (Array.isArray(team_ids) && team_ids.length > 0) {
-    await setPlayerTeams(tenantId, player.id, team_ids);
+    await setPlayerTeamsWithClient(client, tenantId, player.id, team_ids);
   }
   return player;
-};
+  });
 
-export const updatePlayer = async (tenantId: string, id: string, data: any) => {
+export const updatePlayer = async (tenantId: string, id: string, data: any) =>
+  withTenantTransaction(tenantId, async (client) => {
   const { 
     nombre, apellido, cedula, fecha_nacimiento, foto_url, document_url, 
     team_ids, categoria, correo_jugador, padre_nombre, padre_apellido, padre_email, 
     padre_telefono, madre_nombre, madre_apellido, madre_email, madre_telefono 
   } = data;
-  
-  // Determine categoria: use provided value, or get from first team, or keep existing
-  let finalCategoria = categoria;
-  
-  if (!finalCategoria) {
-    if (Array.isArray(team_ids) && team_ids.length > 0) {
-      const teamRes = await pool.query('SELECT nombre FROM teams WHERE id = $1 AND tenant_id = $2', [team_ids[0], tenantId]);
-      if (teamRes.rowCount && teamRes.rowCount > 0) {
-        finalCategoria = teamRes.rows[0].nombre;
-      }
-    }
-    
-    // If still no categoria, get existing categoria from player
-    if (!finalCategoria) {
-      const existingPlayer = await pool.query('SELECT categoria FROM players WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
-      if (existingPlayer.rowCount && existingPlayer.rowCount > 0) {
-        finalCategoria = existingPlayer.rows[0].categoria;
-      } else {
-        finalCategoria = 'Sin categoría';
-      }
-    }
-  }
-  
-  const result = await pool.query(
+  const finalCategoria = await resolveCategory(client, tenantId, categoria, team_ids, id);
+  const result = await client.query(
     `UPDATE players SET 
       nombre = $1, apellido = $2, cedula = $3, fecha_nacimiento = $4, 
       categoria = $5, foto_url = $6, document_url = $7, correo_jugador = $8, 
@@ -119,25 +122,28 @@ export const updatePlayer = async (tenantId: string, id: string, data: any) => {
   );
   if (result.rowCount === 0) throw new Error('Jugador no encontrado');
   if (Array.isArray(team_ids)) {
-    await setPlayerTeams(tenantId, id, team_ids);
+    await setPlayerTeamsWithClient(client, tenantId, id, team_ids);
   }
   return result.rows[0];
-};
+  });
 
-export const deletePlayer = async (tenantId: string, id: string) => {
-  const result = await pool.query('DELETE FROM players WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+export const deletePlayer = async (tenantId: string, id: string) =>
+  withTenantTransaction(tenantId, async (client) => {
+  const result = await client.query('DELETE FROM players WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
   if (result.rowCount === 0) throw new Error('Jugador no encontrado');
-};
+  });
 
-export const getPlayerById = async (tenantId: string, id: string) => {
-  const result = await pool.query('SELECT * FROM players WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+export const getPlayerById = async (tenantId: string, id: string) =>
+  withTenantTransaction(tenantId, async (client) => {
+  const result = await client.query('SELECT * FROM players WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
   if (result.rowCount === 0) throw new Error('Jugador no encontrado');
   return result.rows[0];
-};
+  });
 
-export const getBirthdays = async (tenantId: string) => {
+export const getBirthdays = async (tenantId: string) =>
+  withTenantTransaction(tenantId, async (client) => {
   // Cumpleaños del mes
-  const monthRes = await pool.query(
+  const monthRes = await client.query(
     `SELECT id, nombre, apellido, foto_url, fecha_nacimiento, categoria
      FROM players
      WHERE tenant_id = $1 AND EXTRACT(MONTH FROM fecha_nacimiento) = EXTRACT(MONTH FROM CURRENT_DATE)
@@ -145,7 +151,7 @@ export const getBirthdays = async (tenantId: string) => {
     [tenantId]
   );
   // Próximos cumpleaños (próximos 15 días)
-  const upcomingRes = await pool.query(
+  const upcomingRes = await client.query(
     `SELECT id, nombre, apellido, foto_url, fecha_nacimiento, categoria
      FROM players
      WHERE tenant_id = $1 AND (
@@ -160,4 +166,4 @@ export const getBirthdays = async (tenantId: string) => {
     mes: monthRes.rows,
     proximos: upcomingRes.rows.filter(p => !monthRes.rows.some(m => m.id === p.id)),
   };
-}; 
+  });

@@ -11,7 +11,7 @@ interface Team {
 interface Match {
   id?: string;
   equipo_local_id: string;
-  equipo_visitante_id?: string;
+  equipo_visitante_id?: string | null;
   fecha: string;
   lugar: string;
   competition?: string;

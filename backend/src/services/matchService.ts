@@ -1,5 +1,11 @@
-import { pool } from '../utils/db';
+import { TransactionClient, withTenantTransaction } from '../utils/db';
 import { v4 as uuidv4 } from 'uuid';
+
+const tenantQuery = (
+  tenantId: string,
+  query: string,
+  values: unknown[]
+) => withTenantTransaction(tenantId, (client) => client.query(query, values));
 
 export const getMatches = async (tenantId: string) => {
   const query = `
@@ -12,21 +18,21 @@ export const getMatches = async (tenantId: string) => {
       (
         SELECT COUNT(*) 
         FROM match_convocations mc 
-        WHERE mc.match_id = m.id
+        WHERE mc.match_id = m.id AND mc.tenant_id = $1
       ) as total_convocations,
       (
         SELECT COUNT(*) 
         FROM match_convocations mc 
-        WHERE mc.match_id = m.id AND mc.status = 'confirmado'
+        WHERE mc.match_id = m.id AND mc.tenant_id = $1 AND mc.status = 'confirmado'
       ) as confirmed_convocations
     FROM matches m
-    LEFT JOIN teams tl ON m.equipo_local_id = tl.id
-    LEFT JOIN teams tv ON m.equipo_visitante_id = tv.id
+    LEFT JOIN teams tl ON m.equipo_local_id = tl.id AND tl.tenant_id = $1
+    LEFT JOIN teams tv ON m.equipo_visitante_id = tv.id AND tv.tenant_id = $1
     WHERE m.tenant_id = $1
     ORDER BY m.fecha DESC, m.kickoff_time DESC
   `;
   
-  const result = await pool.query(query, [tenantId]);
+  const result = await tenantQuery(tenantId, query, [tenantId]);
   return result.rows;
 };
 
@@ -39,12 +45,12 @@ export const getMatchById = async (tenantId: string, matchId: string) => {
       tl.categoria as equipo_local_categoria,
       tv.categoria as equipo_visitante_categoria
     FROM matches m
-    LEFT JOIN teams tl ON m.equipo_local_id = tl.id
-    LEFT JOIN teams tv ON m.equipo_visitante_id = tv.id
+    LEFT JOIN teams tl ON m.equipo_local_id = tl.id AND tl.tenant_id = $2
+    LEFT JOIN teams tv ON m.equipo_visitante_id = tv.id AND tv.tenant_id = $2
     WHERE m.id = $1 AND m.tenant_id = $2
   `;
   
-  const result = await pool.query(query, [matchId, tenantId]);
+  const result = await tenantQuery(tenantId, query, [matchId, tenantId]);
   if (!result.rowCount || result.rowCount === 0) throw new Error('Partido no encontrado');
   return result.rows[0];
 };
@@ -66,7 +72,7 @@ export const createMatch = async (tenantId: string, data: any) => {
     kickoff_time
   } = data;
   
-  const result = await pool.query(
+  const result = await tenantQuery(tenantId,
     `INSERT INTO matches (
       id, tenant_id, equipo_local_id, equipo_visitante_id, fecha, lugar, resultado,
       competition, match_type, status, referee, weather_conditions, notes,
@@ -102,7 +108,7 @@ export const updateMatch = async (tenantId: string, id: string, data: any) => {
     kickoff_time
   } = data;
   
-  const result = await pool.query(
+  const result = await tenantQuery(tenantId,
     `UPDATE matches SET 
       equipo_local_id = $1, 
       equipo_visitante_id = $2, 
@@ -135,7 +141,7 @@ export const updateMatch = async (tenantId: string, id: string, data: any) => {
 
 export const deleteMatch = async (tenantId: string, id: string) => {
   // Primero eliminar las convocatorias relacionadas (por CASCADE ya se hace automáticamente)
-  const result = await pool.query('DELETE FROM matches WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+  const result = await tenantQuery(tenantId, 'DELETE FROM matches WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
   if (!result.rowCount || result.rowCount === 0) throw new Error('Partido no encontrado');
 };
 
@@ -153,12 +159,12 @@ export const getTeamPlayers = async (tenantId: string, teamId: string) => {
       p.foto_url,
       EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) as edad
     FROM players p
-    JOIN player_teams pt ON p.id = pt.player_id
+    JOIN player_teams pt ON p.id = pt.player_id AND pt.tenant_id = $2
     WHERE pt.team_id = $1 AND p.tenant_id = $2
     ORDER BY p.apellido, p.nombre
   `;
   
-  const result = await pool.query(query, [teamId, tenantId]);
+  const result = await tenantQuery(tenantId, query, [teamId, tenantId]);
   return result.rows;
 };
 
@@ -172,23 +178,58 @@ export const getMatchConvocations = async (tenantId: string, matchId: string) =>
       p.categoria,
       EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) as edad
     FROM match_convocations mc
-    JOIN players p ON mc.player_id = p.id
+    JOIN players p ON mc.player_id = p.id AND p.tenant_id = $2
     WHERE mc.match_id = $1 AND mc.tenant_id = $2
     ORDER BY mc.is_starter DESC, mc.position, p.apellido, p.nombre
   `;
   
-  const result = await pool.query(query, [matchId, tenantId]);
+  const result = await tenantQuery(tenantId, query, [matchId, tenantId]);
   return result.rows;
 };
 
-export const getMatchWithConvocations = async (tenantId: string, matchId: string) => {
-  const match = await getMatchById(tenantId, matchId);
-  const convocations = await getMatchConvocations(tenantId, matchId);
-  return {
-    ...match,
-    convocations
-  };
+const getMatchByIdWithClient = async (
+  client: TransactionClient,
+  tenantId: string,
+  matchId: string
+) => {
+  const result = await client.query(
+    `SELECT m.*, tl.nombre AS equipo_local_nombre,
+       tv.nombre AS equipo_visitante_nombre,
+       tl.categoria AS equipo_local_categoria,
+       tv.categoria AS equipo_visitante_categoria
+     FROM matches m
+     LEFT JOIN teams tl ON m.equipo_local_id = tl.id AND tl.tenant_id = $2
+     LEFT JOIN teams tv ON m.equipo_visitante_id = tv.id AND tv.tenant_id = $2
+     WHERE m.id = $1 AND m.tenant_id = $2`,
+    [matchId, tenantId]
+  );
+  if (!result.rowCount) throw new Error('Partido no encontrado');
+  return result.rows[0];
 };
+
+const getMatchConvocationsWithClient = async (
+  client: TransactionClient,
+  tenantId: string,
+  matchId: string
+) => {
+  const result = await client.query(
+    `SELECT mc.*, p.nombre, p.apellido, p.foto_url, p.categoria,
+       EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) AS edad
+     FROM match_convocations mc
+     JOIN players p ON mc.player_id = p.id AND p.tenant_id = $2
+     WHERE mc.match_id = $1 AND mc.tenant_id = $2
+     ORDER BY mc.is_starter DESC, mc.position, p.apellido, p.nombre`,
+    [matchId, tenantId]
+  );
+  return result.rows;
+};
+
+export const getMatchWithConvocations = async (tenantId: string, matchId: string) =>
+  withTenantTransaction(tenantId, async (client) => {
+    const match = await getMatchByIdWithClient(client, tenantId, matchId);
+    const convocations = await getMatchConvocationsWithClient(client, tenantId, matchId);
+    return { ...match, convocations };
+  });
 
 export const getMatchesByTeam = async (tenantId: string, teamId: string, limit = 10) => {
   const query = `
@@ -197,15 +238,15 @@ export const getMatchesByTeam = async (tenantId: string, teamId: string, limit =
       tl.nombre as equipo_local_nombre,
       tv.nombre as equipo_visitante_nombre
     FROM matches m
-    LEFT JOIN teams tl ON m.equipo_local_id = tl.id
-    LEFT JOIN teams tv ON m.equipo_visitante_id = tv.id
+    LEFT JOIN teams tl ON m.equipo_local_id = tl.id AND tl.tenant_id = $2
+    LEFT JOIN teams tv ON m.equipo_visitante_id = tv.id AND tv.tenant_id = $2
     WHERE (m.equipo_local_id = $1 OR m.equipo_visitante_id = $1) 
       AND m.tenant_id = $2
     ORDER BY m.fecha DESC, m.kickoff_time DESC
     LIMIT $3
   `;
   
-  const result = await pool.query(query, [teamId, tenantId, limit]);
+  const result = await tenantQuery(tenantId, query, [teamId, tenantId, limit]);
   return result.rows;
 };
 
@@ -220,16 +261,16 @@ export const getUpcomingMatches = async (tenantId: string, limit = 5) => {
       (
         SELECT COUNT(*) 
         FROM match_convocations mc 
-        WHERE mc.match_id = m.id
+        WHERE mc.match_id = m.id AND mc.tenant_id = $1
       ) as total_convocations,
       (
         SELECT COUNT(*) 
         FROM match_convocations mc 
-        WHERE mc.match_id = m.id AND mc.status = 'confirmado'
+        WHERE mc.match_id = m.id AND mc.tenant_id = $1 AND mc.status = 'confirmado'
       ) as confirmed_convocations
     FROM matches m
-    LEFT JOIN teams tl ON m.equipo_local_id = tl.id
-    LEFT JOIN teams tv ON m.equipo_visitante_id = tv.id
+    LEFT JOIN teams tl ON m.equipo_local_id = tl.id AND tl.tenant_id = $1
+    LEFT JOIN teams tv ON m.equipo_visitante_id = tv.id AND tv.tenant_id = $1
     WHERE m.fecha >= CURRENT_DATE 
       AND m.tenant_id = $1
       AND m.status IN ('scheduled', 'confirmed')
@@ -237,6 +278,6 @@ export const getUpcomingMatches = async (tenantId: string, limit = 5) => {
     LIMIT $2
   `;
   
-  const result = await pool.query(query, [tenantId, limit]);
+  const result = await tenantQuery(tenantId, query, [tenantId, limit]);
   return result.rows;
 }; 

@@ -1,20 +1,25 @@
-import { pool } from '../utils/db';
+import { TransactionClient, withTenantTransaction } from '../utils/db';
 import { v4 as uuidv4 } from 'uuid';
 
-export const getTrainings = async (tenantId: string) => {
+export const getTrainings = async (tenantId: string) =>
+  withTenantTransaction(tenantId, async (client) => {
   const query = `
     SELECT t.*, e.nombre as equipo_nombre, e.categoria as equipo_categoria 
     FROM trainings t 
-    LEFT JOIN teams e ON t.equipo_id = e.id 
+    LEFT JOIN teams e ON t.equipo_id = e.id AND e.tenant_id = $1
     WHERE t.tenant_id = $1
     ORDER BY t.fecha ASC, t.hora_inicio ASC
   `;
   
-  const result = await pool.query(query, [tenantId]);
+  const result = await client.query(query, [tenantId]);
   return result.rows;
-};
+});
 
-export const createTraining = async (tenantId: string, data: any) => {
+const createTrainingWithClient = async (
+  client: TransactionClient,
+  tenantId: string,
+  data: any
+) => {
   const {
     equipo_id,
     fecha,
@@ -29,9 +34,19 @@ export const createTraining = async (tenantId: string, data: any) => {
     estado = 'programado'
   } = data;
 
+  if (equipo_id) {
+    const team = await client.query(
+      'SELECT id FROM teams WHERE id = $1 AND tenant_id = $2',
+      [equipo_id, tenantId]
+    );
+    if (team.rowCount === 0) {
+      throw new Error('Equipo no encontrado');
+    }
+  }
+
   // Si no es recurrente, crear un solo entrenamiento
   if (!es_recurrente) {
-    const result = await pool.query(
+    const result = await client.query(
       `INSERT INTO trainings (
         id, tenant_id, equipo_id, fecha, hora_inicio, hora_fin,
         lugar, descripcion, es_recurrente, color, estado
@@ -58,6 +73,9 @@ export const createTraining = async (tenantId: string, data: any) => {
   };
 
   const targetDay = dayMap[dia_semana.toLowerCase()];
+  if (targetDay === undefined || Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    throw new Error('Datos de recurrencia inválidos');
+  }
   let currentDate = new Date(startDate);
 
   // Crear un entrenamiento para cada fecha que coincida con el día de la semana
@@ -65,7 +83,7 @@ export const createTraining = async (tenantId: string, data: any) => {
     if (currentDate.getDay() === targetDay) {
       const trainingDate = currentDate.toISOString().split('T')[0];
       
-      const result = await pool.query(
+      const result = await client.query(
         `INSERT INTO trainings (
           id, tenant_id, equipo_id, fecha, hora_inicio, hora_fin,
           lugar, descripcion, es_recurrente, color, estado, dia_semana
@@ -88,7 +106,14 @@ export const createTraining = async (tenantId: string, data: any) => {
   return trainings;
 };
 
-export const updateTraining = async (tenantId: string, id: string, data: any) => {
+export const createTraining = async (tenantId: string, data: any) =>
+  withTenantTransaction(
+    tenantId,
+    (client) => createTrainingWithClient(client, tenantId, data)
+  );
+
+export const updateTraining = async (tenantId: string, id: string, data: any) =>
+  withTenantTransaction(tenantId, async (client) => {
   const {
     equipo_id,
     fecha,
@@ -96,7 +121,6 @@ export const updateTraining = async (tenantId: string, id: string, data: any) =>
     hora_fin,
     lugar,
     descripcion,
-    es_recurrente,
     dia_semana,
     fecha_fin,
     color,
@@ -105,7 +129,7 @@ export const updateTraining = async (tenantId: string, id: string, data: any) =>
   } = data;
 
   // Primero, obtener el entrenamiento actual
-  const currentTraining = await pool.query(
+  const currentTraining = await client.query(
     'SELECT * FROM trainings WHERE id = $1 AND tenant_id = $2',
     [id, tenantId]
   );
@@ -116,10 +140,20 @@ export const updateTraining = async (tenantId: string, id: string, data: any) =>
 
   const training = currentTraining.rows[0];
 
+  if (equipo_id) {
+    const team = await client.query(
+      'SELECT id FROM teams WHERE id = $1 AND tenant_id = $2',
+      [equipo_id, tenantId]
+    );
+    if (team.rowCount === 0) {
+      throw new Error('Equipo no encontrado');
+    }
+  }
+
   // Si es recurrente y quieren actualizar todos los futuros
   if (training.es_recurrente && updateAll) {
     // Eliminar todos los entrenamientos futuros del mismo día de la semana
-    await pool.query(
+    await client.query(
       `DELETE FROM trainings 
        WHERE tenant_id = $1 
        AND es_recurrente = true 
@@ -129,7 +163,7 @@ export const updateTraining = async (tenantId: string, id: string, data: any) =>
     );
 
     // Crear nuevos entrenamientos con los datos actualizados
-    return createTraining(tenantId, {
+    return createTrainingWithClient(client, tenantId, {
       equipo_id,
       fecha,
       hora_inicio,
@@ -145,7 +179,7 @@ export const updateTraining = async (tenantId: string, id: string, data: any) =>
   }
 
   // Si no es recurrente o solo quieren actualizar este entrenamiento específico
-  const result = await pool.query(
+  const result = await client.query(
     `UPDATE trainings SET 
       equipo_id = $1, fecha = $2, hora_inicio = $3, hora_fin = $4,
       lugar = $5, descripcion = $6, color = $7, estado = $8
@@ -158,11 +192,12 @@ export const updateTraining = async (tenantId: string, id: string, data: any) =>
   );
   
   return result.rows[0];
-};
+});
 
-export const deleteTraining = async (tenantId: string, id: string, deleteAll = false) => {
+export const deleteTraining = async (tenantId: string, id: string, deleteAll = false) =>
+  withTenantTransaction(tenantId, async (client) => {
   // Primero, obtener el entrenamiento
-  const currentTraining = await pool.query(
+  const currentTraining = await client.query(
     'SELECT * FROM trainings WHERE id = $1 AND tenant_id = $2',
     [id, tenantId]
   );
@@ -175,7 +210,7 @@ export const deleteTraining = async (tenantId: string, id: string, deleteAll = f
 
   // Si es recurrente y quieren eliminar todos los futuros
   if (training.es_recurrente && deleteAll) {
-    await pool.query(
+    await client.query(
       `DELETE FROM trainings 
        WHERE tenant_id = $1 
        AND es_recurrente = true 
@@ -187,10 +222,10 @@ export const deleteTraining = async (tenantId: string, id: string, deleteAll = f
   }
 
   // Si no es recurrente o solo quieren eliminar este específico
-  await pool.query(
+  await client.query(
     'DELETE FROM trainings WHERE id = $1 AND tenant_id = $2',
     [id, tenantId]
   );
 
   return { message: 'Entrenamiento eliminado correctamente' };
-}; 
+});

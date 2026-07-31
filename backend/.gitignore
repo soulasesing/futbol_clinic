@@ -2,4 +2,9 @@ node_modules/
 dist/
 build/
 .env
+.env.*
+!.env.example
 coverage/ 
+.DS_Store
+public/uploads/*
+!public/uploads/.gitkeep

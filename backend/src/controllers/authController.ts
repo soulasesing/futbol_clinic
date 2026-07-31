@@ -4,11 +4,11 @@ import { AuthRequest } from '../middlewares/authMiddleware';
 
 export const register = async (req: Request, res: Response) => {
   try {
-    const { token, nombre, password } = req.body;
+    const { tenantId, token, nombre, password } = req.body;
     if (!token || !nombre || !password) {
       return res.status(400).json({ message: 'Faltan datos para registro' });
     }
-    const result = await authService.registerViaInvitation(token, nombre, password);
+    const result = await authService.registerViaInvitation(tenantId, token, nombre, password);
     res.json(result);
   } catch (error: any) {
     res.status(400).json({ message: error.message });
@@ -18,16 +18,37 @@ export const register = async (req: Request, res: Response) => {
 export const login = async (req: Request, res: Response) => {
   try {
     const { email, password, tenantId } = req.body;
-    if (!email || !password) {
+    if (!email || !password || !tenantId || tenantId === 'super_admin') {
       return res.status(400).json({ message: 'Faltan datos para login' });
     }
-    let result;
-    if (!tenantId || tenantId === 'super_admin') {
-      result = await authService.loginSuperAdmin(email, password);
-    } else {
-      result = await authService.login(email, password, tenantId);
-    }
+    const result = await authService.login(email, password, tenantId);
     res.json(result);
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const tenantLogin = async (req: Request, res: Response) => {
+  try {
+    const { email, password, slug } = req.body;
+    if (!email || !password || !slug) {
+      res.status(400).json({ message: 'Faltan datos para login' });
+      return;
+    }
+    res.json(await authService.loginBySlug(email, password, slug));
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const superAdminLogin = async (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      res.status(400).json({ message: 'Faltan datos para login' });
+      return;
+    }
+    res.json(await authService.loginSuperAdmin(email, password));
   } catch (error: any) {
     res.status(400).json({ message: error.message });
   }
@@ -48,11 +69,11 @@ export const forgotPassword = async (req: Request, res: Response) => {
 
 export const resetPassword = async (req: Request, res: Response) => {
   try {
-    const { token, password } = req.body;
+    const { tenantId, token, password } = req.body;
     if (!token || !password) {
       return res.status(400).json({ message: 'Faltan datos para reset' });
     }
-    const result = await authService.resetPassword(token, password);
+    const result = await authService.resetPassword(tenantId, token, password);
     res.json(result);
   } catch (error: any) {
     res.status(400).json({ message: error.message });
@@ -76,7 +97,12 @@ export const changePassword = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ message: 'Usuario no autenticado' });
     }
     
-    const result = await authService.changePassword(userId, currentPassword, newPassword);
+    const result = await authService.changePassword(
+      userId,
+      req.user?.tenantId ?? null,
+      currentPassword,
+      newPassword
+    );
     res.json(result);
   } catch (error: any) {
     res.status(400).json({ message: error.message });

@@ -1,6 +1,28 @@
 import { Request, Response } from 'express';
 import * as tenantService from '../services/tenantService';
 
+export const listPublicTenants = async (_req: Request, res: Response) => {
+  try {
+    const tenants = await tenantService.getPublicTenants();
+    res.json(tenants);
+  } catch {
+    res.status(500).json({ message: 'No se pudieron obtener las escuelas' });
+  }
+};
+
+export const getPublicTenantBySlug = async (req: Request, res: Response) => {
+  try {
+    const tenant = await tenantService.getPublicTenantBySlug(req.params.slug);
+    if (!tenant) {
+      res.status(404).json({ message: 'Escuela no encontrada' });
+      return;
+    }
+    res.json(tenant);
+  } catch {
+    res.status(500).json({ message: 'No se pudo cargar la escuela' });
+  }
+};
+
 export const listTenants = async (_req: Request, res: Response) => {
   try {
     const tenants = await tenantService.getTenants();

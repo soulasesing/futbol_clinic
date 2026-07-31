@@ -7,7 +7,7 @@ export interface AuthRequest extends Request {
 
 export const requireAuth = (req: AuthRequest, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  if (!authHeader?.startsWith('Bearer ')) {
     return res.status(401).json({ message: 'No token provided' });
   }
   try {
@@ -36,4 +36,13 @@ export const requireSuperAdminAuth = (req: AuthRequest, res: Response, next: Nex
     }
     next();
   });
-}; 
+};
+
+export const requireTenantAuth = (req: AuthRequest, res: Response, next: NextFunction) => {
+  requireAuth(req, res, () => {
+    if (!req.user?.tenantId) {
+      return res.status(403).json({ message: 'Tenant context required' });
+    }
+    next();
+  });
+};

@@ -1,15 +1,16 @@
-import { Request, Response, NextFunction } from 'express';
-import { pool } from '../utils/db';
+import { Response, NextFunction } from 'express';
 import { AuthRequest } from './authMiddleware';
 
-export const setTenant = async (req: AuthRequest, res: Response, next: NextFunction) => {
-  // Si es super_admin, no setea tenant
+export const setTenant = (req: AuthRequest, res: Response, next: NextFunction) => {
   if (req.user?.role === 'super_admin') {
     return next();
   }
-  if (req.user?.tenantId) {
-    // Interpolar el tenantId directamente (Postgres no permite $1 en SET)
-    await pool.query(`SET app.current_tenant = '${req.user.tenantId}'`);
+
+  if (!req.user?.tenantId) {
+    return res.status(403).json({ message: 'Tenant context required' });
   }
+
+  // Database tenant context is deliberately established by
+  // withTenantTransaction on the same client that runs the queries.
   next();
 }; 

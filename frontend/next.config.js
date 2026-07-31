@@ -16,8 +16,15 @@ module.exports = {
     const isProduction = process.env.NODE_ENV === 'production';
     
     // In Docker production, proxy to backend service
-    if (isDocker || (!isProduction && process.env.NEXT_PUBLIC_BACKEND_URL)) {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
+    if (
+      isDocker
+      || process.env.INTERNAL_BACKEND_URL
+      || process.env.NEXT_PUBLIC_BACKEND_URL
+    ) {
+      const backendUrl =
+        process.env.INTERNAL_BACKEND_URL
+        || process.env.NEXT_PUBLIC_BACKEND_URL
+        || 'http://localhost:4000';
       return [
         {
           source: '/api/:path*',

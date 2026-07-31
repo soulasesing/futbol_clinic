@@ -33,13 +33,8 @@ docker-compose -f docker-compose.dev.yml up --build
 - **[SOLUCION-SSL.md](./SOLUCION-SSL.md)** - Solución al error SSL de Docker
 - **[backend/README-DEV.md](./backend/README-DEV.md)** - Documentación completa del backend
 
-SuperAdmin
-##########
-superadmin@futbolclinic.com
-admin123
+## Seguridad
 
-Escuela Demo
-------------
-admin@escuelademo.com
-admin123456
-3292ecf6-aff2-43a6-995e-1c8c48d3a8a1
+Las credenciales de desarrollo y producción se gestionan mediante variables de
+entorno. Usa los archivos `.env.example` como referencia y nunca publiques
+contraseñas, tokens ni identificadores de tenants en el repositorio.

@@ -7,22 +7,27 @@
   /* Default colors (emerald theme) */
   --color-primary: #22c55e;
   --color-secondary: #0d9488;
+  --color-primary-contrast: #ffffff;
   --color-primary-rgb: 34, 197, 94;
   --color-secondary-rgb: 13, 148, 136;
   
   /* Primary color variations */
-  --color-primary-50: rgba(34, 197, 94, 0.05);
-  --color-primary-100: rgba(34, 197, 94, 0.1);
-  --color-primary-200: rgba(34, 197, 94, 0.2);
+  --color-primary-50: #f0fdf4;
+  --color-primary-100: #dcfce7;
+  --color-primary-200: #bbf7d0;
+  --color-primary-300: #86efac;
+  --color-primary-400: #4ade80;
   --color-primary-500: #22c55e;
   --color-primary-600: #16a34a;
   --color-primary-700: #15803d;
   --color-primary-800: #166534;
+  --color-primary-900: #14532d;
+  --color-primary-950: #052e16;
   
   /* Secondary color variations */
-  --color-secondary-50: rgba(13, 148, 136, 0.05);
-  --color-secondary-100: rgba(13, 148, 136, 0.1);
-  --color-secondary-200: rgba(13, 148, 136, 0.2);
+  --color-secondary-50: #f0fdfa;
+  --color-secondary-100: #ccfbf1;
+  --color-secondary-200: #99f6e4;
   --color-secondary-500: #0d9488;
   --color-secondary-600: #0f766e;
   --color-secondary-700: #115e59;
@@ -59,6 +64,29 @@
   background: linear-gradient(to bottom right, var(--color-primary-50), white) !important;
 }
 
+.brand-page-bg {
+  background:
+    radial-gradient(circle at 100% 0%, var(--color-primary-100), transparent 34rem),
+    linear-gradient(145deg, var(--color-primary-50), #f8fafc 48%, var(--color-secondary-50));
+}
+
+.brand-gradient {
+  color: var(--color-primary-contrast);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-800));
+}
+
+.brand-hero-dark {
+  background: linear-gradient(135deg, #0f172a, var(--color-primary-900));
+}
+
+.brand-focus {
+  outline: none;
+}
+
+.brand-focus:focus-visible {
+  box-shadow: 0 0 0 3px var(--color-primary-200);
+}
+
 /* Estilos personalizados para la barra de desplazamiento */
 .custom-scrollbar::-webkit-scrollbar {
   width: 8px;
@@ -70,10 +98,10 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #10b981;
+  background: var(--color-primary);
   border-radius: 4px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #059669;
+  background: var(--color-primary-700);
 } 

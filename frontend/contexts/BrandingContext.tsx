@@ -3,6 +3,7 @@ import { useAuth } from './AuthContext';
 
 interface BrandingData {
   id: string;
+  slug?: string;
   nombre: string;
   logo_url?: string;
   banner_url?: string;
@@ -57,32 +58,44 @@ export const BrandingProvider: React.FC<BrandingProviderProps> = ({ children }) 
     const hexToRgb = (hex: string) => {
       const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
       return result ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16)
+        r: Number.parseInt(result[1], 16),
+        g: Number.parseInt(result[2], 16),
+        b: Number.parseInt(result[3], 16)
       } : null;
     };
 
     const primaryRgb = hexToRgb(primary);
     const secondaryRgb = hexToRgb(secondary);
+    const tint = (channel: number, strength: number): number =>
+      Math.round(255 - ((255 - channel) * strength));
 
     if (primaryRgb) {
       root.style.setProperty('--color-primary-rgb', `${primaryRgb.r}, ${primaryRgb.g}, ${primaryRgb.b}`);
+      const luminance = (
+        (0.2126 * primaryRgb.r)
+        + (0.7152 * primaryRgb.g)
+        + (0.0722 * primaryRgb.b)
+      ) / 255;
       // Generate lighter and darker variations
-      root.style.setProperty('--color-primary-50', `rgba(${primaryRgb.r}, ${primaryRgb.g}, ${primaryRgb.b}, 0.05)`);
-      root.style.setProperty('--color-primary-100', `rgba(${primaryRgb.r}, ${primaryRgb.g}, ${primaryRgb.b}, 0.1)`);
-      root.style.setProperty('--color-primary-200', `rgba(${primaryRgb.r}, ${primaryRgb.g}, ${primaryRgb.b}, 0.2)`);
+      root.style.setProperty('--color-primary-50', `rgb(${tint(primaryRgb.r, 0.05)}, ${tint(primaryRgb.g, 0.05)}, ${tint(primaryRgb.b, 0.05)})`);
+      root.style.setProperty('--color-primary-100', `rgb(${tint(primaryRgb.r, 0.1)}, ${tint(primaryRgb.g, 0.1)}, ${tint(primaryRgb.b, 0.1)})`);
+      root.style.setProperty('--color-primary-200', `rgb(${tint(primaryRgb.r, 0.2)}, ${tint(primaryRgb.g, 0.2)}, ${tint(primaryRgb.b, 0.2)})`);
+      root.style.setProperty('--color-primary-300', `rgb(${tint(primaryRgb.r, 0.35)}, ${tint(primaryRgb.g, 0.35)}, ${tint(primaryRgb.b, 0.35)})`);
+      root.style.setProperty('--color-primary-400', `rgb(${tint(primaryRgb.r, 0.62)}, ${tint(primaryRgb.g, 0.62)}, ${tint(primaryRgb.b, 0.62)})`);
       root.style.setProperty('--color-primary-500', primary);
-      root.style.setProperty('--color-primary-600', `rgba(${primaryRgb.r * 0.9}, ${primaryRgb.g * 0.9}, ${primaryRgb.b * 0.9}, 1)`);
-      root.style.setProperty('--color-primary-700', `rgba(${primaryRgb.r * 0.8}, ${primaryRgb.g * 0.8}, ${primaryRgb.b * 0.8}, 1)`);
-      root.style.setProperty('--color-primary-800', `rgba(${primaryRgb.r * 0.7}, ${primaryRgb.g * 0.7}, ${primaryRgb.b * 0.7}, 1)`);
+      root.style.setProperty('--color-primary-600', `rgb(${Math.round(primaryRgb.r * 0.9)}, ${Math.round(primaryRgb.g * 0.9)}, ${Math.round(primaryRgb.b * 0.9)})`);
+      root.style.setProperty('--color-primary-700', `rgb(${Math.round(primaryRgb.r * 0.8)}, ${Math.round(primaryRgb.g * 0.8)}, ${Math.round(primaryRgb.b * 0.8)})`);
+      root.style.setProperty('--color-primary-800', `rgb(${Math.round(primaryRgb.r * 0.68)}, ${Math.round(primaryRgb.g * 0.68)}, ${Math.round(primaryRgb.b * 0.68)})`);
+      root.style.setProperty('--color-primary-900', `rgb(${Math.round(primaryRgb.r * 0.52)}, ${Math.round(primaryRgb.g * 0.52)}, ${Math.round(primaryRgb.b * 0.52)})`);
+      root.style.setProperty('--color-primary-950', `rgb(${Math.round(primaryRgb.r * 0.35)}, ${Math.round(primaryRgb.g * 0.35)}, ${Math.round(primaryRgb.b * 0.35)})`);
+      root.style.setProperty('--color-primary-contrast', luminance > 0.62 ? '#0f172a' : '#ffffff');
     }
 
     if (secondaryRgb) {
       root.style.setProperty('--color-secondary-rgb', `${secondaryRgb.r}, ${secondaryRgb.g}, ${secondaryRgb.b}`);
-      root.style.setProperty('--color-secondary-50', `rgba(${secondaryRgb.r}, ${secondaryRgb.g}, ${secondaryRgb.b}, 0.05)`);
-      root.style.setProperty('--color-secondary-100', `rgba(${secondaryRgb.r}, ${secondaryRgb.g}, ${secondaryRgb.b}, 0.1)`);
-      root.style.setProperty('--color-secondary-200', `rgba(${secondaryRgb.r}, ${secondaryRgb.g}, ${secondaryRgb.b}, 0.2)`);
+      root.style.setProperty('--color-secondary-50', `rgb(${tint(secondaryRgb.r, 0.05)}, ${tint(secondaryRgb.g, 0.05)}, ${tint(secondaryRgb.b, 0.05)})`);
+      root.style.setProperty('--color-secondary-100', `rgb(${tint(secondaryRgb.r, 0.1)}, ${tint(secondaryRgb.g, 0.1)}, ${tint(secondaryRgb.b, 0.1)})`);
+      root.style.setProperty('--color-secondary-200', `rgb(${tint(secondaryRgb.r, 0.2)}, ${tint(secondaryRgb.g, 0.2)}, ${tint(secondaryRgb.b, 0.2)})`);
       root.style.setProperty('--color-secondary-500', secondary);
       root.style.setProperty('--color-secondary-600', `rgba(${secondaryRgb.r * 0.9}, ${secondaryRgb.g * 0.9}, ${secondaryRgb.b * 0.9}, 1)`);
       root.style.setProperty('--color-secondary-700', `rgba(${secondaryRgb.r * 0.8}, ${secondaryRgb.g * 0.8}, ${secondaryRgb.b * 0.8}, 1)`);
@@ -100,7 +113,7 @@ export const BrandingProvider: React.FC<BrandingProviderProps> = ({ children }) 
     try {
       setLoading(true);
       
-      const response = await fetch('/api/tenants', {
+      const response = await fetch('/api/branding', {
         headers: { Authorization: `Bearer ${jwt}` }
       });
 
@@ -116,6 +129,7 @@ export const BrandingProvider: React.FC<BrandingProviderProps> = ({ children }) 
       if (tenant) {
         const brandingData: BrandingData = {
           id: tenant.id,
+          slug: tenant.slug || undefined,
           nombre: tenant.nombre || 'Futbol Clinic',
           logo_url: tenant.logo_url || undefined,
           banner_url: tenant.banner_url || undefined,

@@ -1,6 +1,19 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import * as brandingService from '../services/brandingService';
 import { AuthRequest } from '../middlewares/authMiddleware';
+
+export const getBranding = async (req: AuthRequest, res: Response) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    if (!tenantId) {
+      res.status(400).json({ message: 'Escuela requerida' });
+      return;
+    }
+    res.json(await brandingService.getBranding(tenantId));
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
 
 export const updateBranding = async (req: AuthRequest, res: Response) => {
   try {

@@ -18,7 +18,7 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetch('/api/tenants')
+    fetch('/api/tenants/public')
       .then(res => res.json())
       .then(data => setTenants(Array.isArray(data) ? data : []))
       .catch(() => setTenants([]));
@@ -61,7 +61,7 @@ const Login: React.FC = () => {
         >
           <h1 className="text-3xl font-bold text-center text-emerald-700 mb-2">Iniciar sesión</h1>
           <label className="flex flex-col gap-1 text-sm font-medium text-gray-700">
-            Email
+            <span>Email</span>
             <input
               type="email"
               value={email}
@@ -73,7 +73,7 @@ const Login: React.FC = () => {
             />
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium text-gray-700">
-            Contraseña
+            <span>Contraseña</span>
             <input
               type="password"
               value={password}
@@ -85,7 +85,7 @@ const Login: React.FC = () => {
             />
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium text-gray-700">
-            Escuela
+            <span>Escuela</span>
             <select
               value={tenantId}
               onChange={e => setTenantId(e.target.value)}
@@ -97,7 +97,6 @@ const Login: React.FC = () => {
               {tenants.map(t => (
                 <option key={t.id} value={t.id}>{t.nombre}</option>
               ))}
-              <option value="super_admin">Super Admin (acceso global)</option>
             </select>
           </label>
           {error && <div className="text-red-600 text-sm text-center">{error}</div>}

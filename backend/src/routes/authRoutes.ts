@@ -6,6 +6,8 @@ const router = Router();
 
 router.post('/register', authController.register);
 router.post('/login', authController.login);
+router.post('/tenant-login', authController.tenantLogin);
+router.post('/super-admin-login', authController.superAdminLogin);
 router.post('/forgot', authController.forgotPassword);
 router.post('/reset', authController.resetPassword);
 router.post('/change-password', requireAuth, authController.changePassword);

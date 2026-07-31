@@ -1,12 +1,11 @@
 import { Router } from 'express';
 import * as brandingController from '../controllers/brandingController';
-import { requireAdminAuth } from '../middlewares/authMiddleware';
+import { requireAdminAuth, requireAuth } from '../middlewares/authMiddleware';
 import { setTenant } from '../middlewares/tenantMiddleware';
 
 const router = Router();
 
-router.use(requireAdminAuth, setTenant);
-
-router.put('/', brandingController.updateBranding);
+router.get('/', requireAuth, setTenant, brandingController.getBranding);
+router.put('/', requireAdminAuth, setTenant, brandingController.updateBranding);
 
 export default router; 

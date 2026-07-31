@@ -1,20 +1,3 @@
--- Tabla de equipos
-CREATE TABLE teams (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-  nombre VARCHAR(100) NOT NULL,
-  categoria VARCHAR(50) NOT NULL,
-  entrenador_id UUID REFERENCES coaches(id),
-  created_at TIMESTAMP DEFAULT NOW()
-);
-
-ALTER TABLE teams ENABLE ROW LEVEL SECURITY;
-CREATE POLICY tenant_isolation_teams ON teams
-  USING (tenant_id = current_setting('app.current_tenant')::uuid);
-CREATE TRIGGER set_tenant_id_teams
-BEFORE INSERT ON teams
-FOR EACH ROW EXECUTE FUNCTION set_tenant_id();
-
 -- Tabla de entrenadores
 CREATE TABLE coaches (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -31,6 +14,23 @@ CREATE POLICY tenant_isolation_coaches ON coaches
   USING (tenant_id = current_setting('app.current_tenant')::uuid);
 CREATE TRIGGER set_tenant_id_coaches
 BEFORE INSERT ON coaches
+FOR EACH ROW EXECUTE FUNCTION set_tenant_id();
+
+-- Tabla de equipos (debe crearse después de coaches por su clave foránea)
+CREATE TABLE teams (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  nombre VARCHAR(100) NOT NULL,
+  categoria VARCHAR(50) NOT NULL,
+  entrenador_id UUID REFERENCES coaches(id),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+ALTER TABLE teams ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation_teams ON teams
+  USING (tenant_id = current_setting('app.current_tenant')::uuid);
+CREATE TRIGGER set_tenant_id_teams
+BEFORE INSERT ON teams
 FOR EACH ROW EXECUTE FUNCTION set_tenant_id();
 
 -- Tabla de partidos

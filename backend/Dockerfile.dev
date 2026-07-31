@@ -21,10 +21,8 @@ RUN update-ca-certificates
 # Copy package files first for better caching
 COPY package.json yarn.lock ./
 
-# Configure yarn to handle SSL and install ALL dependencies (including dev)
-# strict-ssl false is needed for some corporate networks/firewalls
-RUN yarn config set strict-ssl false && \
-    yarn config set network-timeout 300000 && \
+# Install all development dependencies without disabling TLS verification.
+RUN yarn config set network-timeout 300000 && \
     yarn install --frozen-lockfile --network-timeout 100000
 
 # Create uploads directory

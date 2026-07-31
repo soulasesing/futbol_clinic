@@ -1,5 +1,5 @@
 # Multi-stage build for Next.js production
-FROM node:18-alpine AS base
+FROM node:20-alpine AS base
 
 # Install dependencies only when needed
 FROM base AS deps
@@ -15,9 +15,16 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+RUN mkdir -p public
 
 # Build Next.js application
+ARG NEXT_PUBLIC_API_URL=/api
+ARG INTERNAL_BACKEND_URL=http://backend:4000
+ARG DOCKER_ENV=true
 ENV NEXT_TELEMETRY_DISABLED 1
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV INTERNAL_BACKEND_URL=${INTERNAL_BACKEND_URL}
+ENV DOCKER_ENV=${DOCKER_ENV}
 RUN yarn build
 
 # Production image, copy all the files and run next

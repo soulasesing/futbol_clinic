@@ -15,13 +15,12 @@ RUN update-ca-certificates
 # Copy package files
 COPY package.json yarn.lock ./
 
-# Configure yarn and install ALL dependencies (including devDependencies for building)
-# Note: strict-ssl false is only for build time due to corporate proxy/firewall issues
-RUN yarn config set strict-ssl false && \
-    yarn install --frozen-lockfile --network-timeout 100000
+# Install all dependencies, including devDependencies required for the build.
+RUN yarn install --frozen-lockfile --network-timeout 100000
 
 # Copy source code
 COPY . .
+RUN mkdir -p public/uploads
 
 # Build TypeScript to JavaScript
 RUN yarn build
@@ -43,15 +42,14 @@ RUN update-ca-certificates
 # Copy package files
 COPY package.json yarn.lock ./
 
-# Configure yarn and install ONLY production dependencies
-RUN yarn config set strict-ssl false && \
-    yarn install --frozen-lockfile --production --network-timeout 100000
+# Install only production dependencies.
+RUN yarn install --frozen-lockfile --production --network-timeout 100000
 
 # Copy built files from builder stage
 COPY --from=builder /app/dist ./dist
 
-# Copy public folder for uploads (if exists)
-COPY --from=builder /app/public ./public 2>/dev/null || mkdir -p ./public/uploads
+# Copy public assets prepared in the build stage.
+COPY --from=builder /app/public ./public
 
 # Create uploads directory with proper permissions
 RUN mkdir -p /app/public/uploads && \
@@ -65,7 +63,7 @@ EXPOSE 4000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:4000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+  CMD node -e "require('http').get('http://localhost:4000/api/ready', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
 # Start the application
 CMD ["node", "dist/server.js"] 

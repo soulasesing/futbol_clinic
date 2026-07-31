@@ -15,8 +15,8 @@ services:
   #   restart: unless-stopped
   #   environment:
   #     POSTGRES_DB: futbol_clinic
-  #     POSTGRES_USER: postgres
-  #     POSTGRES_PASSWORD: postgres123
+  #     POSTGRES_USER: ${POSTGRES_ADMIN_USER:-futbol_migrator}
+  #     POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD}
   #     POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=scram-sha-256"
   #   volumes:
   #     - postgres_data_dev:/var/lib/postgresql/data
@@ -50,13 +50,14 @@ services:
       # - Si tu BD está en otro contenedor: postgresql://user:pass@nombre_contenedor:5432/futbol_clinic
       # - Si tu BD está en host: postgresql://user:pass@host.docker.internal:5432/futbol_clinic
       # - Si tu BD está en red externa: postgresql://user:pass@IP:5432/futbol_clinic
-      DATABASE_URL: postgresql://postgres:postgres123@host.docker.internal:5432/futbol_clinic
-      JWT_SECRET: dev-jwt-secret-at-least-32-characters-long-for-development
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
       FRONTEND_URL: http://localhost:3000
       BACKEND_URL: http://localhost:4000
       PORT: 4000
       # File storage - local for development
-      BLOB_READ_WRITE_TOKEN: local-storage-token
+      BLOB_READ_WRITE_TOKEN: ${BLOB_READ_WRITE_TOKEN:-}
+      PRIVATE_BLOB_READ_WRITE_TOKEN: ${PRIVATE_BLOB_READ_WRITE_TOKEN:-}
       # Database settings
       DATABASE_MAX_CONNECTIONS: 20
       DATABASE_IDLE_TIMEOUT: 30000
@@ -96,7 +97,7 @@ services:
   #   restart: unless-stopped
   #   environment:
   #     PGADMIN_DEFAULT_EMAIL: admin@futbolclinic.com
-  #     PGADMIN_DEFAULT_PASSWORD: admin123
+  #     PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
   #     PGADMIN_CONFIG_SERVER_MODE: 'False'
   #   ports:
   #     - "5050:80"

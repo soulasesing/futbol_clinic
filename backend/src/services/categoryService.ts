@@ -1,13 +1,14 @@
-import { pool } from '../utils/db';
+import { TransactionClient, withTenantTransaction } from '../utils/db';
 
-export const getCategories = async (tenantId: string) => {
-  const result = await pool.query('SELECT * FROM categories WHERE tenant_id = $1 ORDER BY edad_min', [tenantId]);
-  return result.rows;
-};
+export const getCategories = async (tenantId: string) =>
+  withTenantTransaction(tenantId, async (client) => {
+    const result = await client.query('SELECT * FROM categories WHERE tenant_id = $1 ORDER BY edad_min', [tenantId]);
+    return result.rows;
+  });
 
-export const createCategory = async (tenantId: string, data: any) => {
+const createCategoryWithClient = async (client: TransactionClient, tenantId: string, data: any) => {
   const { nombre, edad_min, edad_max, anio_nacimiento_min, anio_nacimiento_max, descripcion } = data;
-  const result = await pool.query(
+  const result = await client.query(
     `INSERT INTO categories (tenant_id, nombre, edad_min, edad_max, anio_nacimiento_min, anio_nacimiento_max, descripcion)
      VALUES ($1, $2, $3, $4, $5, $6, $7)
      RETURNING *`,
@@ -16,29 +17,36 @@ export const createCategory = async (tenantId: string, data: any) => {
   return result.rows[0];
 };
 
-export const updateCategory = async (tenantId: string, id: string, data: any) => {
+export const createCategory = async (tenantId: string, data: any) =>
+  withTenantTransaction(tenantId, (client) => createCategoryWithClient(client, tenantId, data));
+
+export const updateCategory = async (tenantId: string, id: string, data: any) =>
+  withTenantTransaction(tenantId, async (client) => {
   const { nombre, edad_min, edad_max, anio_nacimiento_min, anio_nacimiento_max, descripcion } = data;
-  const result = await pool.query(
+  const result = await client.query(
     `UPDATE categories SET nombre = $1, edad_min = $2, edad_max = $3, anio_nacimiento_min = $4, anio_nacimiento_max = $5, descripcion = $6
      WHERE id = $7 AND tenant_id = $8 RETURNING *`,
     [nombre, edad_min, edad_max, anio_nacimiento_min, anio_nacimiento_max, descripcion, id, tenantId]
   );
   if (result.rowCount === 0) throw new Error('Categoría no encontrada');
   return result.rows[0];
-};
+  });
 
-export const deleteCategory = async (tenantId: string, id: string) => {
-  const result = await pool.query('DELETE FROM categories WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+export const deleteCategory = async (tenantId: string, id: string) =>
+  withTenantTransaction(tenantId, async (client) => {
+  const result = await client.query('DELETE FROM categories WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
   if (result.rowCount === 0) throw new Error('Categoría no encontrada');
-};
+  });
 
-export const getCategoryById = async (tenantId: string, id: string) => {
-  const result = await pool.query('SELECT * FROM categories WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+export const getCategoryById = async (tenantId: string, id: string) =>
+  withTenantTransaction(tenantId, async (client) => {
+  const result = await client.query('SELECT * FROM categories WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
   if (result.rowCount === 0) throw new Error('Categoría no encontrada');
   return result.rows[0];
-};
+  });
 
-export const insertDefaultCategories = async (tenantId: string) => {
+export const insertDefaultCategories = async (tenantId: string) =>
+  withTenantTransaction(tenantId, async (client) => {
   const defaultCategories = [
     { nombre: 'Sub-6', edad_min: 5, edad_max: 6, anio_nacimiento_min: 2019, anio_nacimiento_max: 2019, descripcion: 'Iniciación, juegos lúdicos, primeros toques' },
     { nombre: 'Sub-7', edad_min: 6, edad_max: 7, anio_nacimiento_min: 2018, anio_nacimiento_max: 2018, descripcion: 'Coordinación, psicomotricidad con balón' },
@@ -56,6 +64,6 @@ export const insertDefaultCategories = async (tenantId: string) => {
   ];
 
   for (const category of defaultCategories) {
-    await createCategory(tenantId, category);
+    await createCategoryWithClient(client, tenantId, category);
   }
-}; 
+  });

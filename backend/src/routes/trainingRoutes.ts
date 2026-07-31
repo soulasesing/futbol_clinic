@@ -1,11 +1,11 @@
 import express from 'express';
 import * as trainingController from '../controllers/trainingController';
-import { requireAuth } from '../middlewares/authMiddleware';
+import { requireTenantAuth } from '../middlewares/authMiddleware';
 
 const router = express.Router();
 
 // Aplicar middleware de autenticación a todas las rutas
-router.use(requireAuth);
+router.use(requireTenantAuth);
 
 // Rutas CRUD básicas
 router.get('/', trainingController.getTrainings);
