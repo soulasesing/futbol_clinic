@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import Navbar from '../components/Navbar';
+import AppShell from '../components/AppShell';
 import { useAuth } from '../contexts/AuthContext';
 
 interface Team {
@@ -142,12 +142,11 @@ const TeamsPage: React.FC = () => {
   if (!isAuthenticated) return null;
 
   return (
-    <>
-      <Navbar />
-      <main className="min-h-screen bg-gradient-to-br from-emerald-50 to-white px-4 py-12">
+    <AppShell title="Equipos" subtitle="Categorías, entrenadores y organización deportiva.">
+      <div>
         <div className="max-w-5xl mx-auto flex flex-col gap-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-            <h1 className="text-3xl font-black bg-gradient-to-r from-emerald-700 via-green-600 to-teal-700 bg-clip-text text-transparent drop-shadow">Equipos</h1>
+            <span />
             <button
               onClick={() => { setShowForm(true); setEditTeam(null); }}
               className="px-6 py-2 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold shadow hover:scale-105 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-400"
@@ -304,8 +303,8 @@ const TeamsPage: React.FC = () => {
             </div>
           )}
         </div>
-      </main>
-    </>
+      </div>
+    </AppShell>
   );
 };
 

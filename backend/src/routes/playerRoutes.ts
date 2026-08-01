@@ -1,18 +1,20 @@
 import { Router } from 'express';
 import * as playerController from '../controllers/playerController';
-import { requireAuth } from '../middlewares/authMiddleware';
+import { requireAuth, requireRole } from '../middlewares/authMiddleware';
 import { setTenant } from '../middlewares/tenantMiddleware';
 
 const router = Router();
 
 router.use(requireAuth, setTenant);
 
-router.get('/', playerController.getPlayers);
-router.post('/', playerController.createPlayer);
-router.get('/birthdays', playerController.getBirthdays);
-router.get('/:id/teams', playerController.getPlayerTeams);
-router.get('/:id', playerController.getPlayerById);
-router.put('/:id', playerController.updatePlayer);
-router.delete('/:id', playerController.deletePlayer);
+router.get('/', requireRole('admin', 'coach'), playerController.getPlayers);
+router.post('/', requireRole('admin'), playerController.createPlayer);
+router.get('/birthdays', requireRole('admin', 'coach'), playerController.getBirthdays);
+router.get('/:id/teams', requireRole('admin', 'coach'), playerController.getPlayerTeams);
+router.get('/:id/export', requireRole('admin'), playerController.exportPlayerData);
+router.delete('/:id/personal-data', requireRole('admin'), playerController.erasePlayerData);
+router.get('/:id', requireRole('admin', 'coach'), playerController.getPlayerById);
+router.put('/:id', requireRole('admin'), playerController.updatePlayer);
+router.delete('/:id', requireRole('admin'), playerController.deletePlayer);
 
 export default router; 

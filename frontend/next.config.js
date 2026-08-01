@@ -19,10 +19,12 @@ module.exports = {
     if (
       isDocker
       || process.env.INTERNAL_BACKEND_URL
+      || process.env.BACKEND_API_URL
       || process.env.NEXT_PUBLIC_BACKEND_URL
     ) {
       const backendUrl =
         process.env.INTERNAL_BACKEND_URL
+        || process.env.BACKEND_API_URL
         || process.env.NEXT_PUBLIC_BACKEND_URL
         || 'http://localhost:4000';
       return [

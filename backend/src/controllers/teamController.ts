@@ -5,7 +5,10 @@ import { AuthRequest } from '../middlewares/authMiddleware';
 export const getTeams = async (req: AuthRequest, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
-    const teams = await teamService.getTeams(tenantId!);
+    const teams = await teamService.getTeams(
+      tenantId!,
+      req.user?.role === 'coach' ? req.user.userId : undefined
+    );
     res.json(teams);
   } catch (error: any) {
     res.status(400).json({ message: error.message });
@@ -42,10 +45,13 @@ export const deleteTeam = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const getTeamsWithPlayersAndCoach = async (req: any, res: any) => {
+export const getTeamsWithPlayersAndCoach = async (req: AuthRequest, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
-    const teams = await teamService.getTeamsWithPlayersAndCoach(tenantId);
+    const teams = await teamService.getTeamsWithPlayersAndCoach(
+      tenantId!,
+      req.user?.role === 'coach' ? req.user.userId : undefined
+    );
     res.json(teams);
   } catch (error: any) {
     res.status(400).json({ message: error.message });

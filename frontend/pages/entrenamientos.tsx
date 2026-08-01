@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import Navbar from '../components/Navbar';
+import AppShell from '../components/AppShell';
 import { useAuth } from '../contexts/AuthContext';
 import ConfirmDialog from '../components/ConfirmDialog';
 import FullCalendar from '@fullcalendar/react';
@@ -310,7 +310,7 @@ const TrainingsPage: React.FC = () => {
   if (!isAuthenticated) return null;
 
   return (
-    <>
+    <AppShell title="Entrenamientos" subtitle="Calendario y gestión de sesiones deportivas.">
       <ConfirmDialog
         isOpen={confirmDialog.isOpen}
         title={confirmDialog.title}
@@ -319,21 +319,13 @@ const TrainingsPage: React.FC = () => {
         onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
         type={confirmDialog.type}
       />
-      <Navbar />
-      <main className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 p-4 lg:p-8">
+      <div>
         <div className="max-w-7xl mx-auto">
           {/* Header Section */}
           <div className="mb-6">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
               {/* Title and Description */}
-              <div>
-                <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
-                  📅 Calendario de Entrenamientos
-                </h1>
-                <p className="text-gray-600 text-lg">
-                  Gestiona y visualiza todos los entrenamientos de tus equipos
-                </p>
-              </div>
+              <div />
 
               {/* Action Button */}
               <div className="flex justify-end">
@@ -589,7 +581,7 @@ const TrainingsPage: React.FC = () => {
             </div>
           </div>
         )}
-      </main>
+      </div>
 
       <style jsx global>{`
         /* Calendar Custom Styles - Clean and Professional */
@@ -758,7 +750,7 @@ const TrainingsPage: React.FC = () => {
           }
         }
       `}</style>
-    </>
+    </AppShell>
   );
 };
 

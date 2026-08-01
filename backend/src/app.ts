@@ -24,6 +24,8 @@ import domainRoutes from './routes/domainRoutes';
 import familyPortalRoutes from './routes/familyPortalRoutes';
 import paymentRoutes from './routes/paymentRoutes';
 import v1DashboardRoutes from './routes/v1DashboardRoutes';
+import landingRoutes from './routes/landingRoutes';
+import parentAccessRoutes from './routes/parentAccessRoutes';
 
 dotenv.config();
 
@@ -60,8 +62,8 @@ const configuredOrigins = [
   .filter((origin): origin is string => Boolean(origin))
   .map((origin) => origin.trim().replace(/\/$/, ''));
 
-if (process.env.NODE_ENV !== 'production' && configuredOrigins.length === 0) {
-  configuredOrigins.push('http://localhost:3000');
+if (process.env.NODE_ENV !== 'production') {
+  configuredOrigins.push('http://localhost:3000', 'http://127.0.0.1:3000');
 }
 
 app.use(cors({
@@ -101,6 +103,7 @@ app.use('/api/attendance', attendanceRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/branding', brandingRoutes);
+app.use('/api/landing', landingRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/tenants', tenantRoutes);
 app.use('/api/physical-tests', physicalTestRoutes);
@@ -110,6 +113,7 @@ app.use('/api/v1/dashboard', v1DashboardRoutes);
 app.use('/api/v1/domain', domainRoutes);
 app.use('/api/v1/finance', paymentRoutes);
 app.use('/api/v1/family', familyPortalRoutes);
+app.use('/api/v1/parents', parentAccessRoutes);
 
 app.get('/api/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok' });

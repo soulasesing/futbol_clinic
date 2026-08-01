@@ -35,6 +35,7 @@ const SuperAdminLogin: React.FC = () => {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.message || 'No fue posible iniciar sesión');
       const jwtPayload = decodeJwtPayload(payload.jwt);
+      localStorage.setItem('loginPath', '/super-admin/login');
       login(payload.jwt, {
         email,
         tenantId: jwtPayload.tenantId || '',

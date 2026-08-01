@@ -5,7 +5,10 @@ import { AuthRequest } from '../middlewares/authMiddleware';
 export const getStats = async (req: AuthRequest, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
-    const stats = await statsService.getStats(tenantId!);
+    const stats = await statsService.getStats(
+      tenantId!,
+      req.user?.role === 'coach' ? req.user.userId : undefined
+    );
     res.json(stats);
   } catch (error: any) {
     res.status(400).json({ message: error.message });

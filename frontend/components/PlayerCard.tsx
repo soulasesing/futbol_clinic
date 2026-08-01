@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import PhysicalTestForm from './PhysicalTestForm';
+import AuthenticatedImage from './AuthenticatedImage';
 
 interface Team {
   id: string;
@@ -12,7 +13,7 @@ interface Player {
   id: string;
   nombre: string;
   apellido: string;
-  cedula: string;
+  cedula?: string;
   fecha_nacimiento: string;
   categoria: string;
   foto_url?: string;
@@ -27,7 +28,7 @@ interface Player {
   madre_apellido?: string;
   madre_email?: string;
   madre_telefono?: string;
-  created_at: string;
+  created_at?: string;
 }
 
 interface PlayerCardProps {
@@ -74,7 +75,7 @@ const calcularEdad = (fecha: string) => {
 };
 
 const PlayerCard: React.FC<PlayerCardProps> = ({ player, onClose, onEdit, onRefresh }) => {
-  const { jwt } = useAuth() as any;
+  const { jwt, user } = useAuth() as any;
   const [showPhysicalTestForm, setShowPhysicalTestForm] = useState(false);
   const [physicalTests, setPhysicalTests] = useState<PhysicalTest[]>([]);
   const [loading, setLoading] = useState(false);
@@ -83,6 +84,7 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player, onClose, onEdit, onRefr
   // Fetch physical tests
   useEffect(() => {
     const fetchPhysicalTests = async () => {
+      if (user?.role !== 'admin') return;
       setLoading(true);
       try {
         const response = await fetch(`/api/physical-tests/player/${player.id}`, {
@@ -100,7 +102,37 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player, onClose, onEdit, onRefr
     };
 
     fetchPhysicalTests();
-  }, [player.id, jwt]);
+  }, [player.id, jwt, user?.role]);
+
+  const handleExport = async (): Promise<void> => {
+    const response = await fetch(`/api/players/${player.id}/export`, {
+      headers: { Authorization: `Bearer ${jwt}` },
+    });
+    if (!response.ok) return;
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `player-${player.id}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handlePrivacyErase = async (): Promise<void> => {
+    const reason = window.prompt('Motivo de la eliminación completa de datos:');
+    if (!reason || !window.confirm('Esta acción elimina permanentemente los datos. ¿Continuar?')) return;
+    const response = await fetch(`/api/players/${player.id}/personal-data`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${jwt}`,
+      },
+      body: JSON.stringify({ reason }),
+    });
+    if (!response.ok) return;
+    onClose();
+    onRefresh?.();
+  };
 
   return (
     <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
@@ -118,7 +150,7 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player, onClose, onEdit, onRefr
           </div>
           <div className="flex items-center gap-6">
             {player.foto_url ? (
-              <img 
+              <AuthenticatedImage
                 src={player.foto_url} 
                 alt={`${player.nombre} ${player.apellido}`}
                 className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
@@ -132,9 +164,10 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player, onClose, onEdit, onRefr
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-2xl font-bold text-white">{`${player.nombre} ${player.apellido}`}</h2>
-                  <p className="text-emerald-100">ID: {player.cedula}</p>
+                  {player.cedula && <p className="text-emerald-100">ID: {player.cedula}</p>}
                 </div>
-                {onEdit && (
+                {onEdit && user?.role === 'admin' && (
+                  <div className="flex flex-wrap justify-end gap-2">
                   <button
                     onClick={() => onEdit(player)}
                     className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors flex items-center gap-2"
@@ -142,6 +175,13 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player, onClose, onEdit, onRefr
                     <span className="text-lg">✏️</span>
                     <span>Editar</span>
                   </button>
+                  <button type="button" onClick={handleExport} className="rounded-lg bg-white/10 px-3 py-2 text-sm text-white hover:bg-white/20">
+                    Exportar
+                  </button>
+                  <button type="button" onClick={handlePrivacyErase} className="rounded-lg bg-red-700/80 px-3 py-2 text-sm text-white hover:bg-red-700">
+                    Eliminar datos
+                  </button>
+                  </div>
                 )}
               </div>
             </div>
@@ -161,10 +201,10 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player, onClose, onEdit, onRefr
                 <span className="font-medium">Fecha de nacimiento:</span>{' '}
                 {new Date(player.fecha_nacimiento).toLocaleDateString()}
               </p>
-              <p className="text-gray-600">
+              {player.created_at && <p className="text-gray-600">
                 <span className="font-medium">Fecha de inscripción:</span>{' '}
                 {new Date(player.created_at).toLocaleDateString()}
-              </p>
+              </p>}
               {player.correo_jugador && (
                 <p className="text-gray-600">
                   <span className="font-medium">Email:</span> {player.correo_jugador}
@@ -245,7 +285,7 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player, onClose, onEdit, onRefr
           {player.document_url && (
             <div className="border-t pt-6">
               <h3 className="font-semibold text-emerald-700 mb-3">Documento de Identidad</h3>
-              <img
+              <AuthenticatedImage
                 src={player.document_url}
                 alt="Documento de identidad"
                 className="max-w-xs rounded-lg shadow-md mx-auto"
@@ -254,7 +294,7 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player, onClose, onEdit, onRefr
           )}
 
           {/* Physical Tests Section */}
-          <div className="border-t pt-6">
+          {user?.role === 'admin' && <div className="border-t pt-6">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-emerald-700">Pruebas Físicas</h3>
               <button
@@ -406,10 +446,10 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player, onClose, onEdit, onRefr
                 </table>
               </div>
             )}
-          </div>
+          </div>}
 
           {/* Physical Test Form Modal */}
-          {showPhysicalTestForm && (
+          {user?.role === 'admin' && showPhysicalTestForm && (
             <PhysicalTestForm
               playerId={player.id}
               playerName={`${player.nombre} ${player.apellido}`}

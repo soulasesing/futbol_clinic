@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import AuthenticatedImage from './AuthenticatedImage';
 import { 
   Users, 
   UserCheck, 
@@ -414,7 +415,7 @@ const PlayerConvocation: React.FC<PlayerConvocationProps> = ({ match, onClose, o
                     
                     {/* Avatar */}
                     {player.foto_url ? (
-                      <img
+                      <AuthenticatedImage
                         src={player.foto_url}
                         alt={`${player.nombre} ${player.apellido}`}
                         className={`w-12 h-12 rounded-full object-cover border-2 ${
@@ -559,7 +560,7 @@ const ConvocationCard: React.FC<ConvocationCardProps> = ({
         {/* Player Avatar */}
         <div className="flex-shrink-0">
           {convocation.foto_url ? (
-            <img
+            <AuthenticatedImage
               src={convocation.foto_url}
               alt={`${convocation.nombre} ${convocation.apellido}`}
               className="w-14 h-14 rounded-full object-cover border-2 border-emerald-200"

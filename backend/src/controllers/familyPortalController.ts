@@ -35,7 +35,8 @@ const storePrivateProof = async (
   buffer: Buffer,
   mimeType: string
 ): Promise<string> => {
-  const token = process.env.PRIVATE_BLOB_READ_WRITE_TOKEN;
+  const token =
+    process.env.PRIVATE_BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN;
   if (token) {
     const blob = await put(pathname, buffer, {
       access: 'private',

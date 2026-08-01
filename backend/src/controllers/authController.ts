@@ -8,6 +8,11 @@ export const register = async (req: Request, res: Response) => {
     if (!token || !nombre || !password) {
       return res.status(400).json({ message: 'Faltan datos para registro' });
     }
+    if (typeof password !== 'string' || password.length < 12) {
+      return res.status(400).json({
+        message: 'La contraseña debe tener al menos 12 caracteres',
+      });
+    }
     const result = await authService.registerViaInvitation(tenantId, token, nombre, password);
     res.json(result);
   } catch (error: any) {
@@ -56,11 +61,11 @@ export const superAdminLogin = async (req: Request, res: Response) => {
 
 export const forgotPassword = async (req: Request, res: Response) => {
   try {
-    const { email, tenantId } = req.body;
-    if (!email || !tenantId) {
+    const { email, slug } = req.body;
+    if (!email || !slug) {
       return res.status(400).json({ message: 'Faltan datos para recuperación' });
     }
-    const result = await authService.forgotPassword(email, tenantId);
+    const result = await authService.forgotPassword(email, slug);
     res.json(result);
   } catch (error: any) {
     res.status(400).json({ message: error.message });
@@ -72,6 +77,9 @@ export const resetPassword = async (req: Request, res: Response) => {
     const { tenantId, token, password } = req.body;
     if (!token || !password) {
       return res.status(400).json({ message: 'Faltan datos para reset' });
+    }
+    if (password.length < 12) {
+      return res.status(400).json({ message: 'La contraseña debe tener al menos 12 caracteres' });
     }
     const result = await authService.resetPassword(tenantId, token, password);
     res.json(result);
@@ -88,8 +96,8 @@ export const changePassword = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: 'La contraseña actual y nueva son requeridas' });
     }
     
-    if (newPassword.length < 6) {
-      return res.status(400).json({ message: 'La nueva contraseña debe tener al menos 6 caracteres' });
+    if (newPassword.length < 12) {
+      return res.status(400).json({ message: 'La nueva contraseña debe tener al menos 12 caracteres' });
     }
     
     const userId = req.user?.userId;

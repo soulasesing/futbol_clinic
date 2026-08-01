@@ -6,7 +6,10 @@ import { AuthRequest } from '../middlewares/authMiddleware';
 export const getMatches = async (req: AuthRequest, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
-    const matches = await matchService.getMatches(tenantId!);
+    const matches = await matchService.getMatches(
+      tenantId!,
+      req.user?.role === 'coach' ? req.user.userId : undefined
+    );
     res.json(matches);
   } catch (error: any) {
     res.status(400).json({ message: error.message });
@@ -79,7 +82,11 @@ export const getUpcomingMatches = async (req: AuthRequest, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
     const limit = parseInt(req.query.limit as string) || 5;
-    const matches = await matchService.getUpcomingMatches(tenantId!, limit);
+    const matches = await matchService.getUpcomingMatches(
+      tenantId!,
+      limit,
+      req.user?.role === 'coach' ? req.user.userId : undefined
+    );
     res.json(matches);
   } catch (error: any) {
     res.status(400).json({ message: error.message });

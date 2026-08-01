@@ -17,6 +17,7 @@ router.post('/guardian-players', controller.linkGuardianPlayer);
 router.post('/coach-team-assignments', controller.assignCoachTeam);
 router.post('/consents', controller.createConsent);
 router.post('/documents', controller.createDocument);
+router.get('/audit-events', controller.listAuditEvents);
 router.get('/notifications', controller.listNotifications);
 router.post('/notifications', controller.createNotification);
 

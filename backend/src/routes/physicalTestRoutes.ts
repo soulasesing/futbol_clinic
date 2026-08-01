@@ -1,11 +1,12 @@
 import { Router } from 'express';
 import * as physicalTestController from '../controllers/physicalTestController';
-import { requireTenantAuth } from '../middlewares/authMiddleware';
+import { requireRole, requireTenantAuth } from '../middlewares/authMiddleware';
 
 const router = Router();
 
 // Apply middleware
 router.use(requireTenantAuth);
+router.use(requireRole('admin'));
 
 // Routes
 router.post('/', physicalTestController.createPhysicalTest);

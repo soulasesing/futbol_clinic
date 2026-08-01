@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useRouter } from 'next/router';
-import Navbar from '../components/Navbar';
+import AppShell from '../components/AppShell';
 import MatchCard from '../components/MatchCard';
 import MatchForm from '../components/MatchForm';
 import PlayerConvocation from '../components/PlayerConvocation';
@@ -253,9 +253,8 @@ const Partidos: React.FC = () => {
 
   if (loading) {
     return (
-      <>
-        <Navbar />
-        <main className="min-h-screen bg-gradient-to-br from-emerald-50 to-white px-4 py-12">
+      <AppShell title="Partidos" subtitle="Calendario, convocatorias y resultados.">
+        <div>
           <div className="max-w-7xl mx-auto">
             <div className="flex items-center justify-center py-20">
               <div className="text-center">
@@ -264,26 +263,18 @@ const Partidos: React.FC = () => {
               </div>
             </div>
           </div>
-        </main>
-      </>
+        </div>
+      </AppShell>
     );
   }
 
   return (
-    <>
-      <Navbar />
-      <main className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 px-4 py-12">
+    <AppShell title="Partidos" subtitle="Calendario, convocatorias y resultados.">
+      <div>
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-8">
-            <div>
-              <h1 className="text-4xl lg:text-5xl font-black bg-gradient-to-r from-emerald-700 via-green-600 to-teal-700 bg-clip-text text-transparent">
-                ⚽ Partidos
-              </h1>
-              <p className="text-gray-600 mt-2 text-lg">
-                Gestiona los partidos de tus equipos y convoca jugadores
-              </p>
-            </div>
+            <div />
             
             <button
               onClick={() => {
@@ -478,7 +469,7 @@ const Partidos: React.FC = () => {
             </div>
           )}
         </div>
-      </main>
+      </div>
 
       {/* Match Form Modal */}
       {showMatchForm && (
@@ -533,7 +524,7 @@ const Partidos: React.FC = () => {
           }}
         />
       )}
-    </>
+    </AppShell>
   );
 };
 

@@ -213,7 +213,8 @@ export const downloadProof = async (req: AuthRequest, res: Response): Promise<vo
       return;
     }
 
-    const token = process.env.PRIVATE_BLOB_READ_WRITE_TOKEN;
+    const token =
+      process.env.PRIVATE_BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN;
     if (!token) {
       res.status(503).json({ message: 'Almacenamiento privado no configurado' });
       return;

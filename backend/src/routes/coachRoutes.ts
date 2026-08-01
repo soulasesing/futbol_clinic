@@ -1,11 +1,12 @@
 import { Router } from 'express';
 import * as coachController from '../controllers/coachController';
-import { requireAuth } from '../middlewares/authMiddleware';
+import { requireAuth, requireRole } from '../middlewares/authMiddleware';
 import { setTenant } from '../middlewares/tenantMiddleware';
 
 const router = Router();
 
 router.use(requireAuth, setTenant);
+router.use(requireRole('admin'));
 
 router.get('/', coachController.getCoaches);
 router.post('/', coachController.createCoach);

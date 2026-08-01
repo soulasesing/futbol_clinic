@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import Navbar from '../components/Navbar';
+import AppShell from '../components/AppShell';
 import { useAuth } from '../contexts/AuthContext';
 
 interface Tenant {
@@ -9,6 +9,9 @@ interface Tenant {
   logo_url?: string;
   banner_url?: string;
   responsable_nombre?: string;
+  status: 'active' | 'suspended';
+  suspended_at?: string;
+  suspension_reason?: string;
 }
 
 interface AdminUser {
@@ -21,10 +24,14 @@ interface AdminUser {
 
 const PAGE_SIZE = 10;
 
-const uploadImage = async (file: File): Promise<string | null> => {
+const uploadImage = async (file: File, token: string): Promise<string | null> => {
   const formData = new FormData();
   formData.append('file', file);
-  const res = await fetch('/api/upload', { method: 'POST', body: formData });
+  const res = await fetch('/api/upload/branding', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
   if (!res.ok) throw new Error('Error al subir imagen');
   const data = await res.json();
   return data.url;
@@ -65,6 +72,31 @@ const TenantsPage: React.FC = () => {
   };
   useEffect(fetchTenants, [jwt]);
 
+  const handleStatusChange = async (tenant: Tenant): Promise<void> => {
+    const suspending = tenant.status !== 'suspended';
+    const reason = suspending
+      ? window.prompt('Motivo de la suspensión:', 'Pago pendiente')
+      : undefined;
+    if (suspending && !reason) return;
+    const response = await fetch(`/api/tenants/${tenant.id}/status`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${jwt}`,
+      },
+      body: JSON.stringify({
+        status: suspending ? 'suspended' : 'active',
+        reason,
+      }),
+    });
+    if (!response.ok) {
+      const payload = await response.json();
+      throw new Error(payload.message || 'No se pudo cambiar el estado de la escuela');
+    }
+    fetchTenants();
+    setFlippedId(null);
+  };
+
   // Búsqueda instantánea
   useEffect(() => {
     const q = search.toLowerCase();
@@ -93,8 +125,8 @@ const TenantsPage: React.FC = () => {
       let banner_url: string | undefined = editTenant?.banner_url;
       const logoFile = logoInputRef.current?.files?.[0];
       const bannerFile = bannerInputRef.current?.files?.[0];
-      if (logoFile) logo_url = (await uploadImage(logoFile)) ?? undefined;
-      if (bannerFile) banner_url = (await uploadImage(bannerFile)) ?? undefined;
+      if (logoFile) logo_url = (await uploadImage(logoFile, jwt)) ?? undefined;
+      if (bannerFile) banner_url = (await uploadImage(bannerFile, jwt)) ?? undefined;
       const payload = { nombre, email_contacto, responsable_nombre, logo_url, banner_url };
       const res = await fetch('/api/tenants', {
         method: 'POST',
@@ -117,12 +149,11 @@ const TenantsPage: React.FC = () => {
   if (!isAuthenticated || user?.role !== 'super_admin') return null;
 
   return (
-    <>
-      <Navbar />
-      <main className="min-h-screen bg-gradient-to-br from-emerald-50 to-white px-4 py-12">
+    <AppShell title="Escuelas" subtitle="Administración de academias y acceso comercial.">
+      <div>
         <div className="max-w-5xl mx-auto flex flex-col gap-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-            <h1 className="text-3xl font-black bg-gradient-to-r from-emerald-700 via-green-600 to-teal-700 bg-clip-text text-transparent drop-shadow">Escuelas de Fútbol</h1>
+            <span />
             <button
               onClick={() => { setShowForm(true); setEditTenant(null); setLogoPreview(null); setBannerPreview(null); }}
               className="px-6 py-2 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold shadow hover:scale-105 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-400"
@@ -175,6 +206,13 @@ const TenantsPage: React.FC = () => {
                         </span>
                       )}
                       <div className="text-xl font-bold text-emerald-700 text-center">{tenant.nombre}</div>
+                      <span className={`rounded-full px-3 py-1 text-xs font-bold ${
+                        tenant.status === 'suspended'
+                          ? 'bg-red-100 text-red-700'
+                          : 'bg-emerald-100 text-emerald-700'
+                      }`}>
+                        {tenant.status === 'suspended' ? 'Suspendida' : 'Activa'}
+                      </span>
                     </div>
                     {/* Cara trasera */}
                     <div className="absolute inset-0 bg-white rounded-2xl shadow-xl p-4 flex flex-col justify-center [transform:rotateY(180deg)] [backface-visibility:hidden] border border-emerald-100">
@@ -235,6 +273,23 @@ const TenantsPage: React.FC = () => {
                                 Eliminar
                               </button>
                             </div>
+                            <button
+                              onClick={async e => {
+                                e.stopPropagation();
+                                try {
+                                  await handleStatusChange(tenant);
+                                } catch (statusError) {
+                                  window.alert(statusError instanceof Error ? statusError.message : 'No se pudo cambiar el estado');
+                                }
+                              }}
+                              className={`px-3 py-1 rounded font-bold text-sm ${
+                                tenant.status === 'suspended'
+                                  ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                                  : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                              }`}
+                            >
+                              {tenant.status === 'suspended' ? 'Reactivar' : 'Suspender'}
+                            </button>
                             <button
                               onClick={async e => {
                                 e.stopPropagation();
@@ -309,8 +364,8 @@ const TenantsPage: React.FC = () => {
                         let banner_url: string | undefined = editTenant.banner_url;
                         const logoFile = logoInputRef.current?.files?.[0];
                         const bannerFile = bannerInputRef.current?.files?.[0];
-                        if (logoFile) logo_url = (await uploadImage(logoFile)) ?? undefined;
-                        if (bannerFile) banner_url = (await uploadImage(bannerFile)) ?? undefined;
+                        if (logoFile) logo_url = (await uploadImage(logoFile, jwt)) ?? undefined;
+                        if (bannerFile) banner_url = (await uploadImage(bannerFile, jwt)) ?? undefined;
                         const payload = { nombre, email_contacto, logo_url, banner_url, responsable_nombre };
                         const res = await fetch(`/api/tenants/${editTenant.id}`, {
                           method: 'PUT',
@@ -423,7 +478,7 @@ const TenantsPage: React.FC = () => {
             </div>
           )}
         </div>
-      </main>
+      </div>
       
       {/* Modal de Administradores */}
       {showAdminModal && selectedTenant && (
@@ -658,7 +713,7 @@ const TenantsPage: React.FC = () => {
           </div>
         </div>
       )}
-    </>
+    </AppShell>
   );
 };
 

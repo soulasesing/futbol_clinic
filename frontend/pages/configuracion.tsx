@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import Navbar from '../components/Navbar';
+import AppShell from '../components/AppShell';
 import { useAuth } from '../contexts/AuthContext';
 import { useBranding } from '../contexts/BrandingContext';
 
@@ -30,10 +30,9 @@ const ConfiguracionEscuela: React.FC = () => {
 
   useEffect(() => {
     // Obtener branding actual
-    fetch('/api/tenants', { headers: { Authorization: `Bearer ${jwt}` } })
+    fetch('/api/branding', { headers: { Authorization: `Bearer ${jwt}` } })
       .then(res => res.json())
-      .then(data => {
-        const escuela = Array.isArray(data) ? data.find((t: any) => t.id && user?.tenantId && t.id === user.tenantId) : null;
+      .then(escuela => {
         if (escuela) {
           setNombre(escuela.nombre || '');
           setFoundationDate(escuela.foundation_date ? escuela.foundation_date.slice(0, 10) : '');
@@ -63,7 +62,11 @@ const ConfiguracionEscuela: React.FC = () => {
   const uploadImage = async (file: File): Promise<string | null> => {
     const formData = new FormData();
     formData.append('file', file);
-    const res = await fetch('/api/upload', { method: 'POST', body: formData });
+    const res = await fetch('/api/upload/branding', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${jwt}` },
+      body: formData,
+    });
     if (!res.ok) throw new Error('Error al subir imagen');
     const data = await res.json();
     return data.url;
@@ -119,11 +122,9 @@ const ConfiguracionEscuela: React.FC = () => {
   if (!isAuthenticated || user?.role !== 'admin') return null;
 
   return (
-    <>
-      <Navbar />
-      <main className="min-h-screen bg-gradient-to-br from-emerald-50 to-white px-4 py-12">
+    <AppShell title="Configuración" subtitle="Identidad, contacto y canales públicos de la academia.">
+      <div>
         <div className="max-w-xl mx-auto bg-white rounded-2xl shadow-xl p-8 border border-emerald-100 flex flex-col gap-8">
-          <h1 className="text-2xl font-black bg-gradient-to-r from-emerald-700 via-green-600 to-teal-700 bg-clip-text text-transparent drop-shadow mb-2">Configurar escuela</h1>
           <form onSubmit={handleSave} className="flex flex-col gap-6">
             {/* Datos generales */}
             <div className="flex flex-col gap-2">
@@ -245,8 +246,8 @@ const ConfiguracionEscuela: React.FC = () => {
             </div>
           </form>
         </div>
-      </main>
-    </>
+      </div>
+    </AppShell>
   );
 };
 

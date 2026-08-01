@@ -26,6 +26,22 @@ const getErrorMessage = (payload: unknown): string => {
   return 'No fue posible completar la solicitud.';
 };
 
+const clearSuspendedSession = (status: number, payload: unknown): void => {
+  if (
+    status !== 403
+    || !payload
+    || typeof payload !== 'object'
+    || (payload as Record<string, unknown>).code !== 'TENANT_SUSPENDED'
+    || typeof window === 'undefined'
+  ) return;
+  const loginPath = localStorage.getItem('loginPath') || '/';
+  localStorage.removeItem('jwt');
+  localStorage.removeItem('user');
+  window.location.assign(
+    `${loginPath}${loginPath.includes('?') ? '&' : '?'}suspended=1`
+  );
+};
+
 export const apiRequest = async <T>(
   path: string,
   options: ApiRequestOptions = {},
@@ -59,6 +75,7 @@ export const apiRequest = async <T>(
   }
 
   if (!response.ok) {
+    clearSuspendedSession(response.status, payload);
     if (response.status === 401 && typeof window !== 'undefined') {
       localStorage.removeItem('jwt');
       localStorage.removeItem('user');
@@ -87,6 +104,7 @@ export const apiBlob = async (
     } catch {
       payload = undefined;
     }
+    clearSuspendedSession(response.status, payload);
     if (response.status === 401 && typeof window !== 'undefined') {
       localStorage.removeItem('jwt');
       localStorage.removeItem('user');

@@ -336,3 +336,22 @@ export const createNotification = async (
   );
   return result.rows[0];
 };
+
+export const listAuditEvents = async (
+  actor: Actor,
+  limit = 100
+): Promise<unknown[]> => {
+  assertAdmin(actor);
+  const safeLimit = Math.min(Math.max(limit, 1), 250);
+  const result = await tenantQuery(actor.tenantId,
+    `SELECT ae.id, ae.action, ae.entity_type, ae.entity_id, ae.metadata,
+            ae.occurred_at, u.nombre AS actor_name, u.email AS actor_email
+     FROM audit_events ae
+     LEFT JOIN users u ON u.id = ae.actor_user_id AND u.tenant_id = ae.tenant_id
+     WHERE ae.tenant_id = $1
+     ORDER BY ae.occurred_at DESC
+     LIMIT $2`,
+    [actor.tenantId, safeLimit]
+  );
+  return result.rows;
+};

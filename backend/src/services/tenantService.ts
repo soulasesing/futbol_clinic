@@ -16,7 +16,7 @@ export const getPublicTenants = async () => {
   const result = await pool.query(
     `SELECT id, nombre, slug
      FROM tenants
-     WHERE login_enabled = TRUE
+     WHERE login_enabled = TRUE AND status = 'active'
      ORDER BY nombre`
   );
   return result.rows;
@@ -29,7 +29,7 @@ export const getPublicTenantBySlug = async (slug: string) => {
     `SELECT slug, nombre, logo_url, banner_url, primary_color, secondary_color,
             description, slogan
      FROM tenants
-     WHERE LOWER(slug) = $1 AND login_enabled = TRUE`,
+     WHERE LOWER(slug) = $1 AND login_enabled = TRUE AND status = 'active'`,
     [normalizedSlug]
   );
   return result.rows[0] ?? null;
@@ -40,7 +40,8 @@ export const getTenants = async () => {
     SELECT t.id, t.nombre, t.email_contacto, t.logo_url, t.banner_url,
       t.foundation_date, t.description, t.slogan, t.telefono, t.email,
       t.facebook_url, t.instagram_url, t.twitter_url, t.youtube_url, t.tiktok_url,
-      t.primary_color, t.secondary_color, t.slug, t.login_enabled
+      t.primary_color, t.secondary_color, t.slug, t.login_enabled,
+      t.status, t.suspended_at, t.suspension_reason
     FROM tenants t
     ORDER BY t.nombre
   `);
@@ -149,6 +150,31 @@ export const updateTenant = async (id: string, data: any) => {
 export const deleteTenant = async (id: string) => {
   const result = await pool.query('DELETE FROM tenants WHERE id = $1', [id]);
   if (result.rowCount === 0) throw new Error('Escuela no encontrada');
+};
+
+export const setTenantStatus = async (
+  id: string,
+  status: 'active' | 'suspended',
+  reason?: string
+) => {
+  const result = await pool.query(
+    `UPDATE tenants
+     SET status = $1::VARCHAR,
+         login_enabled = ($1::VARCHAR = 'active'),
+         suspended_at = CASE
+           WHEN $1::VARCHAR = 'suspended' THEN NOW()
+           ELSE NULL
+         END,
+         suspension_reason = CASE
+           WHEN $1::VARCHAR = 'suspended' THEN NULLIF($2::TEXT, '')
+           ELSE NULL
+         END
+     WHERE id = $3
+     RETURNING id, nombre, slug, status, login_enabled, suspended_at, suspension_reason`,
+    [status, reason ?? null, id]
+  );
+  if (!result.rows[0]) throw new Error('Escuela no encontrada');
+  return result.rows[0];
 };
 
 export const getTenantDetail = async (tenantId: string) => {

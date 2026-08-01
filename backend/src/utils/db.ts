@@ -3,8 +3,30 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+if (process.env.NODE_ENV === 'production' && !process.env.DATABASE_URL) {
+  throw new Error('DATABASE_URL is required in production');
+}
+
+const parsePositiveInteger = (value: string | undefined, fallback: number): number => {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+};
+
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+  max: parsePositiveInteger(
+    process.env.DATABASE_MAX_CONNECTIONS,
+    process.env.VERCEL ? 3 : 20
+  ),
+  idleTimeoutMillis: parsePositiveInteger(process.env.DATABASE_IDLE_TIMEOUT, 30_000),
+  connectionTimeoutMillis: parsePositiveInteger(
+    process.env.DATABASE_CONNECTION_TIMEOUT,
+    10_000
+  ),
+  allowExitOnIdle: Boolean(process.env.VERCEL) || process.env.NODE_ENV === 'test',
+  application_name: process.env.VERCEL
+    ? 'futbol-clinic-vercel'
+    : 'futbol-clinic-backend',
 });
 
 export type TransactionClient = Pick<PoolClient, 'query'>;
