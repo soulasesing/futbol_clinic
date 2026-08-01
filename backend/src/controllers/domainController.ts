@@ -163,3 +163,16 @@ export const createNotification = async (
     sendError(res, error);
   }
 };
+
+export const listAuditEvents = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const requestedLimit = Number(req.query.limit || 100);
+    const limit = Number.isInteger(requestedLimit) ? requestedLimit : 100;
+    res.json(await domainService.listAuditEvents(actorFrom(req), limit));
+  } catch (error) {
+    sendError(res, error);
+  }
+};

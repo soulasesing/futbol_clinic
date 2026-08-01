@@ -11,6 +11,7 @@ import {
   UserRound,
   WalletCards,
 } from 'lucide-react';
+import AuthenticatedImage from '../AuthenticatedImage';
 import AppShell from '../AppShell';
 import { EmptyState, ErrorState, LoadingState } from '../AsyncStates';
 import { useAuth } from '../../contexts/AuthContext';
@@ -173,7 +174,7 @@ const ParentPortal: React.FC = () => { // NOSONAR: portal orchestration keeps re
           <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-label="Hijos vinculados">
             {!data.children?.length ? <div className="sm:col-span-2 lg:col-span-3"><EmptyState compact title="Sin deportistas vinculados" message="Solicita a la escuela que vincule tu cuenta familiar." /></div> : data.children.map((child) => (
               <article key={child.id} className="flex items-center gap-4 rounded-3xl border border-brand-100 bg-white p-5 shadow-sm">
-                {child.photoUrl ? <img src={child.photoUrl} alt="" className="h-14 w-14 rounded-2xl object-cover" /> : <span className="rounded-2xl bg-brand-50 p-4"><UserRound className="h-6 w-6 text-brand-700" /></span>}
+                {child.photoUrl ? <AuthenticatedImage src={child.photoUrl} alt="" className="h-14 w-14 rounded-2xl object-cover" /> : <span className="rounded-2xl bg-brand-50 p-4"><UserRound className="h-6 w-6 text-brand-700" /></span>}
                 <div><h2 className="font-black">{child.name}</h2><p className="text-sm text-slate-500">{child.teamName || 'Sin equipo asignado'}</p></div>
               </article>
             ))}

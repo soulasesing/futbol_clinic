@@ -1,6 +1,7 @@
 import React from 'react';
 import { Cake } from 'lucide-react';
 import { EmptyState } from '../AsyncStates';
+import AuthenticatedImage from '../AuthenticatedImage';
 
 export interface DashboardBirthday {
   id: string;
@@ -37,7 +38,7 @@ const BirthdaySection: React.FC<BirthdaySectionProps> = ({ birthdays }) => (
         {birthdays.map((birthday) => (
           <article key={birthday.id} className="flex items-center gap-3 rounded-2xl border border-pink-100 bg-white p-4">
             {birthday.photoUrl ? (
-              <img src={birthday.photoUrl} alt="" className="h-11 w-11 rounded-xl object-cover" />
+              <AuthenticatedImage src={birthday.photoUrl} alt="" className="h-11 w-11 rounded-xl object-cover" />
             ) : (
               <span className="rounded-xl bg-pink-100 p-3 text-pink-600"><Cake className="h-5 w-5" /></span>
             )}

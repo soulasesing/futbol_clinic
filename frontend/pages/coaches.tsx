@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
-import Navbar from '../components/Navbar';
+import AppShell from '../components/AppShell';
 import { useAuth } from '../contexts/AuthContext';
+import AuthenticatedImage from '../components/AuthenticatedImage';
 
 interface Coach {
   id: string;
@@ -13,10 +14,15 @@ interface Coach {
 
 const PAGE_SIZE = 10;
 
-const uploadImage = async (file: File): Promise<string | null> => {
+const uploadImage = async (file: File, token: string): Promise<string | null> => {
   const formData = new FormData();
   formData.append('file', file);
-  const res = await fetch('/api/upload', { method: 'POST', body: formData });
+  formData.append('kind', 'coach-photo');
+  const res = await fetch('/api/upload', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
   if (!res.ok) throw new Error('Error al subir imagen');
   const data = await res.json();
   return data.url;
@@ -72,7 +78,7 @@ const CoachesPage: React.FC = () => {
     try {
       let foto_url: string | undefined = coach.foto_url ?? undefined;
       if (file) {
-        const uploaded = await uploadImage(file);
+        const uploaded = await uploadImage(file, jwt);
         foto_url = uploaded ?? undefined;
       }
       if (editCoach) {
@@ -113,12 +119,11 @@ const CoachesPage: React.FC = () => {
   if (!isAuthenticated) return null;
 
   return (
-    <>
-      <Navbar />
-      <main className="min-h-screen bg-gradient-to-br from-emerald-50 to-white px-4 py-12">
+    <AppShell title="Entrenadores" subtitle="Perfiles y personal deportivo de la academia.">
+      <div>
         <div className="max-w-5xl mx-auto flex flex-col gap-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-            <h1 className="text-3xl font-black bg-gradient-to-r from-emerald-700 via-green-600 to-teal-700 bg-clip-text text-transparent drop-shadow">Entrenadores</h1>
+            <span />
             <button
               onClick={() => { setShowForm(true); setEditCoach(null); setPreview(null); }}
               className="px-6 py-2 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold shadow hover:scale-105 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-400"
@@ -155,7 +160,7 @@ const CoachesPage: React.FC = () => {
                     <tr key={coach.id} className="border-b last:border-0 hover:bg-emerald-50/40">
                       <td className="p-2">
                         {coach.foto_url ? (
-                          <img src={coach.foto_url} alt="Foto" className="w-10 h-10 rounded-full object-cover border" />
+                          <AuthenticatedImage src={coach.foto_url} alt="Foto" className="w-10 h-10 rounded-full object-cover border" />
                         ) : (
                           <span className="w-10 h-10 flex items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 text-white font-bold text-lg shadow">
                             {coach.nombre.charAt(0)}
@@ -297,8 +302,8 @@ const CoachesPage: React.FC = () => {
             </div>
           )}
         </div>
-      </main>
-    </>
+      </div>
+    </AppShell>
   );
 };
 

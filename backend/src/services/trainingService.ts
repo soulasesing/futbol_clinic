@@ -1,24 +1,55 @@
 import { TransactionClient, withTenantTransaction } from '../utils/db';
 import { v4 as uuidv4 } from 'uuid';
 
-export const getTrainings = async (tenantId: string) =>
+const assertCoachTeamAccess = async (
+  client: TransactionClient,
+  tenantId: string,
+  coachUserId: string | undefined,
+  teamId: string | undefined
+): Promise<void> => {
+  if (!coachUserId) return;
+  if (!teamId) throw new Error('No tienes acceso a este equipo');
+  const access = await client.query(
+    `SELECT 1 FROM users u
+     JOIN coaches c ON LOWER(c.email) = LOWER(u.email) AND c.tenant_id = u.tenant_id
+     JOIN coach_team_assignments cta
+       ON cta.coach_id = c.id AND cta.tenant_id = c.tenant_id
+     WHERE u.id = $1 AND u.tenant_id = $2 AND cta.team_id = $3
+       AND (cta.starts_on IS NULL OR cta.starts_on <= CURRENT_DATE)
+       AND (cta.ends_on IS NULL OR cta.ends_on >= CURRENT_DATE)`,
+    [coachUserId, tenantId, teamId]
+  );
+  if (access.rowCount === 0) throw new Error('No tienes acceso a este equipo');
+};
+
+export const getTrainings = async (tenantId: string, coachUserId?: string) =>
   withTenantTransaction(tenantId, async (client) => {
   const query = `
     SELECT t.*, e.nombre as equipo_nombre, e.categoria as equipo_categoria 
     FROM trainings t 
     LEFT JOIN teams e ON t.equipo_id = e.id AND e.tenant_id = $1
     WHERE t.tenant_id = $1
+      AND ($2::UUID IS NULL OR EXISTS (
+        SELECT 1 FROM users u
+        JOIN coaches c ON LOWER(c.email) = LOWER(u.email) AND c.tenant_id = u.tenant_id
+        JOIN coach_team_assignments cta
+          ON cta.coach_id = c.id AND cta.tenant_id = c.tenant_id
+        WHERE u.id = $2 AND u.tenant_id = $1 AND cta.team_id = t.equipo_id
+          AND (cta.starts_on IS NULL OR cta.starts_on <= CURRENT_DATE)
+          AND (cta.ends_on IS NULL OR cta.ends_on >= CURRENT_DATE)
+      ))
     ORDER BY t.fecha ASC, t.hora_inicio ASC
   `;
   
-  const result = await client.query(query, [tenantId]);
+  const result = await client.query(query, [tenantId, coachUserId ?? null]);
   return result.rows;
 });
 
 const createTrainingWithClient = async (
   client: TransactionClient,
   tenantId: string,
-  data: any
+  data: any,
+  coachUserId?: string
 ) => {
   const {
     equipo_id,
@@ -33,6 +64,8 @@ const createTrainingWithClient = async (
     color = '#2563eb', // Azul por defecto
     estado = 'programado'
   } = data;
+
+  await assertCoachTeamAccess(client, tenantId, coachUserId, equipo_id);
 
   if (equipo_id) {
     const team = await client.query(
@@ -106,13 +139,22 @@ const createTrainingWithClient = async (
   return trainings;
 };
 
-export const createTraining = async (tenantId: string, data: any) =>
+export const createTraining = async (
+  tenantId: string,
+  data: any,
+  coachUserId?: string
+) =>
   withTenantTransaction(
     tenantId,
-    (client) => createTrainingWithClient(client, tenantId, data)
+    (client) => createTrainingWithClient(client, tenantId, data, coachUserId)
   );
 
-export const updateTraining = async (tenantId: string, id: string, data: any) =>
+export const updateTraining = async (
+  tenantId: string,
+  id: string,
+  data: any,
+  coachUserId?: string
+) =>
   withTenantTransaction(tenantId, async (client) => {
   const {
     equipo_id,
@@ -139,6 +181,13 @@ export const updateTraining = async (tenantId: string, id: string, data: any) =>
   }
 
   const training = currentTraining.rows[0];
+  await assertCoachTeamAccess(client, tenantId, coachUserId, training.equipo_id);
+  await assertCoachTeamAccess(
+    client,
+    tenantId,
+    coachUserId,
+    equipo_id ?? training.equipo_id
+  );
 
   if (equipo_id) {
     const team = await client.query(
@@ -175,7 +224,7 @@ export const updateTraining = async (tenantId: string, id: string, data: any) =>
       fecha_fin,
       color,
       estado
-    });
+    }, coachUserId);
   }
 
   // Si no es recurrente o solo quieren actualizar este entrenamiento específico
@@ -194,7 +243,12 @@ export const updateTraining = async (tenantId: string, id: string, data: any) =>
   return result.rows[0];
 });
 
-export const deleteTraining = async (tenantId: string, id: string, deleteAll = false) =>
+export const deleteTraining = async (
+  tenantId: string,
+  id: string,
+  deleteAll = false,
+  coachUserId?: string
+) =>
   withTenantTransaction(tenantId, async (client) => {
   // Primero, obtener el entrenamiento
   const currentTraining = await client.query(
@@ -207,6 +261,7 @@ export const deleteTraining = async (tenantId: string, id: string, deleteAll = f
   }
 
   const training = currentTraining.rows[0];
+  await assertCoachTeamAccess(client, tenantId, coachUserId, training.equipo_id);
 
   // Si es recurrente y quieren eliminar todos los futuros
   if (training.es_recurrente && deleteAll) {

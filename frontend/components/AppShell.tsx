@@ -40,11 +40,15 @@ const navigation: Record<UserRole, NavItem[]> = {
   ],
   admin: [
     { href: '/dashboard', label: 'Resumen', icon: Home },
+    { href: '/familias', label: 'Familias', icon: Users },
     { href: '/players', label: 'Jugadores', icon: UserRound },
     { href: '/teams', label: 'Equipos', icon: Users },
+    { href: '/coaches', label: 'Entrenadores', icon: UserRound },
     { href: '/entrenamientos', label: 'Agenda', icon: CalendarDays },
     { href: '/finanzas', label: 'Finanzas', icon: WalletCards },
     { href: '/partidos', label: 'Partidos', icon: Trophy },
+    { href: '/landing', label: 'Portada pública', icon: Megaphone },
+    { href: '/auditoria', label: 'Auditoría', icon: ShieldCheck },
     { href: '/configuracion', label: 'Configuración', icon: Settings },
   ],
   coach: [
@@ -77,8 +81,13 @@ const AppShell: React.FC<AppShellProps> = ({ children, title, subtitle, actions 
   };
 
   const handleLogout = (): void => {
-    logout();
-    void router.push(branding?.slug ? `/escuela/${branding.slug}/login` : '/login');
+    let destination = localStorage.getItem('loginPath') || '/';
+    if (user?.role === 'super_admin') {
+      destination = '/super-admin/login';
+    } else if (branding?.slug) {
+      destination = `/escuela/${branding.slug}`;
+    }
+    void router.replace(destination).finally(logout);
   };
 
   return (
@@ -97,7 +106,7 @@ const AppShell: React.FC<AppShellProps> = ({ children, title, subtitle, actions 
           </span>
         </Link>
 
-        <nav className="mt-8 flex-1 space-y-1" aria-label="Navegación principal">
+        <nav className="mt-8 min-h-0 flex-1 space-y-1 overflow-y-auto pr-1" aria-label="Navegación principal">
           {links.map(({ href, label, icon: Icon }, index) => (
             <Link
               key={`${href}-${index}`}
@@ -142,9 +151,9 @@ const AppShell: React.FC<AppShellProps> = ({ children, title, subtitle, actions 
         <main className="mx-auto max-w-7xl px-4 py-6 pb-28 md:px-8 md:py-8 lg:pb-8">{children}</main>
       </div>
 
-      <nav className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-5 border-t border-slate-200 bg-white/95 px-1 pb-[max(env(safe-area-inset-bottom),0.35rem)] pt-2 shadow-2xl backdrop-blur lg:hidden" aria-label="Navegación móvil">
-        {links.slice(0, 5).map(({ href, label, icon: Icon }, index) => (
-          <Link key={`${href}-${index}`} href={href} className={`flex min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-[10px] font-bold ${isActive(href) ? 'text-brand-700' : 'text-slate-500'}`} aria-current={isActive(href) ? 'page' : undefined}>
+      <nav className="fixed inset-x-0 bottom-0 z-50 flex overflow-x-auto border-t border-slate-200 bg-white/95 px-1 pb-[max(env(safe-area-inset-bottom),0.35rem)] pt-2 shadow-2xl backdrop-blur lg:hidden" aria-label="Navegación móvil">
+        {links.map(({ href, label, icon: Icon }, index) => (
+          <Link key={`${href}-${index}`} href={href} className={`flex min-w-[4.75rem] flex-1 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-[10px] font-bold ${isActive(href) ? 'text-brand-700' : 'text-slate-500'}`} aria-current={isActive(href) ? 'page' : undefined}>
             <Icon className={`h-5 w-5 ${isActive(href) ? 'fill-brand-100' : ''}`} aria-hidden="true" />
             <span className="max-w-full truncate">{label}</span>
           </Link>

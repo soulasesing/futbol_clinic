@@ -10,6 +10,8 @@ comerciales aplicables en el país del despliegue.
 - Crear credenciales diferentes para el migrador y la aplicación.
 - Rotar cualquier token que haya aparecido previamente en Git.
 - Configurar `JWT_SECRET`, orígenes CORS, correo y un Blob privado separado.
+- Configurar un Blob público únicamente para logos/banners y otro privado para
+  fotos, documentos y comprobantes.
 - Mantener `MIGRATOR_DATABASE_URL` únicamente en el trabajo de despliegue.
 - Configurar alertas sobre respuestas 5xx, latencia y falta de disponibilidad.
 
@@ -47,6 +49,8 @@ yarn create-super-admin
 4. La aplicación utiliza un rol `NOSUPERUSER NOBYPASSRLS`.
 5. El backup diario se crea y un restore aislado termina correctamente.
 6. Los logs JSON incluyen `requestId`, ruta, estado y duración.
+7. La suspensión de una escuela bloquea inicios de sesión y tokens ya emitidos.
+8. La URL pública de un archivo privado no responde sin autorización.
 
 ## 3. Prueba funcional por rol
 
@@ -66,14 +70,20 @@ la otra.
 - ver únicamente equipos asignados;
 - crear o consultar entrenamientos y partidos;
 - registrar asistencia, convocatoria y resultado;
-- consultar deportistas y pruebas físicas permitidas.
+- consultar únicamente deportistas, equipos y eventos asignados.
 
 ### Familia
 
+- crear la familia desde `Familias`, vincular al menos un deportista y enviar
+  una invitación;
+- confirmar que el enlace es de un solo uso, vence en 24 horas y permite crear
+  una contraseña de al menos 12 caracteres;
+- probar reenvío, revocación, suspensión y reactivación desde el administrador;
+- comprobar que un entrenador no puede gestionar accesos familiares;
 - ver solamente sus deportistas;
 - consultar agenda y responder asistencia;
 - ver saldo, cuentas e instrucciones;
-- enviar JPG, PNG y PDF válidos de hasta 5 MB;
+- enviar JPG, PNG y PDF válidos de hasta 4 MB;
 - recibir el estado del comprobante y consultar recibos.
 
 ## 4. Criterios de apertura
@@ -84,6 +94,10 @@ la otra.
 - Restore ensayado durante los últimos 30 días.
 - Responsable de soporte y canal privado publicados.
 - Textos legales y consentimiento para datos de menores aprobados.
+- Exportación y eliminación de datos personales verificadas con un jugador de
+  prueba, incluido el borrado del archivo privado.
+- La escuela piloto permanece `active`; cambiarla a `suspended` si el servicio
+  no debe continuar por falta de pago.
 - Cinco usuarios piloto completan los flujos críticos sin ayuda del equipo.
 
 ## 5. Despliegue gradual y rollback

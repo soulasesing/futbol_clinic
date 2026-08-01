@@ -2,7 +2,7 @@ import React, { FormEvent, useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { LockKeyhole, Mail } from 'lucide-react';
+import { ArrowLeft, LockKeyhole, Mail } from 'lucide-react';
 import { useAuth } from '../../../contexts/AuthContext';
 
 interface TenantBranding {
@@ -80,6 +80,7 @@ const TenantLoginPage: React.FC = () => {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.message || 'No fue posible iniciar sesión');
       const jwtPayload = decodeJwtPayload(payload.jwt);
+      localStorage.setItem('loginPath', `/escuela/${slug}/login`);
       login(payload.jwt, {
         email,
         tenantId: jwtPayload.tenantId,
@@ -119,6 +120,9 @@ const TenantLoginPage: React.FC = () => {
         style={{ background: `linear-gradient(145deg, ${colors.primary} 0%, #0f172a 72%)` }}
       >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_38%)]" />
+        <Link href={`/escuela/${slug}`} className="absolute left-5 top-5 z-10 flex items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-sm font-bold text-white backdrop-blur hover:bg-white/20">
+          <ArrowLeft className="h-4 w-4" /> Volver a la academia
+        </Link>
         <section className="relative w-full max-w-md rounded-3xl border border-white/20 bg-white/95 p-7 shadow-2xl backdrop-blur md:p-9">
           <header className="mb-8 text-center">
             {tenant.logo_url ? (
@@ -150,6 +154,16 @@ const TenantLoginPage: React.FC = () => {
               </span>
             </label>
             {formError && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">{formError}</p>}
+            {router.query.expired === '1' && (
+              <output className="block rounded-xl bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
+                Tu sesión expiró por 10 minutos de inactividad. Inicia sesión nuevamente.
+              </output>
+            )}
+            {router.query.reset === 'success' && (
+              <output className="block rounded-xl bg-green-50 px-3 py-2 text-sm font-semibold text-green-800">
+                Contraseña actualizada. Ya puedes iniciar sesión.
+              </output>
+            )}
             <button
               type="submit"
               disabled={submitting}
@@ -158,6 +172,13 @@ const TenantLoginPage: React.FC = () => {
             >
               {submitting ? 'Ingresando…' : 'Ingresar'}
             </button>
+            <Link
+              href={`/escuela/${slug}/forgot`}
+              className="block text-center text-sm font-bold"
+              style={{ color: colors.primary }}
+            >
+              ¿Olvidaste tu contraseña?
+            </Link>
           </form>
           <p className="mt-7 text-center text-xs text-slate-500">Acceso exclusivo para miembros de esta academia.</p>
         </section>

@@ -7,7 +7,19 @@ const tenantQuery = (
   values: unknown[]
 ) => withTenantTransaction(tenantId, (client) => client.query(query, values));
 
-export const getMatches = async (tenantId: string) => {
+const coachMatchAccessSql = `
+  EXISTS (
+    SELECT 1 FROM users u
+    JOIN coaches c ON LOWER(c.email) = LOWER(u.email) AND c.tenant_id = u.tenant_id
+    JOIN coach_team_assignments cta
+      ON cta.coach_id = c.id AND cta.tenant_id = c.tenant_id
+    WHERE u.id = $2 AND u.tenant_id = $1
+      AND (cta.team_id = m.equipo_local_id OR cta.team_id = m.equipo_visitante_id)
+      AND (cta.starts_on IS NULL OR cta.starts_on <= CURRENT_DATE)
+      AND (cta.ends_on IS NULL OR cta.ends_on >= CURRENT_DATE)
+  )`;
+
+export const getMatches = async (tenantId: string, coachUserId?: string) => {
   const query = `
     SELECT 
       m.*,
@@ -29,10 +41,11 @@ export const getMatches = async (tenantId: string) => {
     LEFT JOIN teams tl ON m.equipo_local_id = tl.id AND tl.tenant_id = $1
     LEFT JOIN teams tv ON m.equipo_visitante_id = tv.id AND tv.tenant_id = $1
     WHERE m.tenant_id = $1
+      AND ($2::UUID IS NULL OR ${coachMatchAccessSql})
     ORDER BY m.fecha DESC, m.kickoff_time DESC
   `;
   
-  const result = await tenantQuery(tenantId, query, [tenantId]);
+  const result = await tenantQuery(tenantId, query, [tenantId, coachUserId ?? null]);
   return result.rows;
 };
 
@@ -153,7 +166,6 @@ export const getTeamPlayers = async (tenantId: string, teamId: string) => {
       p.id,
       p.nombre,
       p.apellido,
-      p.cedula,
       p.fecha_nacimiento,
       p.categoria,
       p.foto_url,
@@ -250,7 +262,11 @@ export const getMatchesByTeam = async (tenantId: string, teamId: string, limit =
   return result.rows;
 };
 
-export const getUpcomingMatches = async (tenantId: string, limit = 5) => {
+export const getUpcomingMatches = async (
+  tenantId: string,
+  limit = 5,
+  coachUserId?: string
+) => {
   const query = `
     SELECT 
       m.*,
@@ -274,10 +290,24 @@ export const getUpcomingMatches = async (tenantId: string, limit = 5) => {
     WHERE m.fecha >= CURRENT_DATE 
       AND m.tenant_id = $1
       AND m.status IN ('scheduled', 'confirmed')
+      AND ($3::UUID IS NULL OR EXISTS (
+        SELECT 1 FROM users u
+        JOIN coaches c ON LOWER(c.email) = LOWER(u.email) AND c.tenant_id = u.tenant_id
+        JOIN coach_team_assignments cta
+          ON cta.coach_id = c.id AND cta.tenant_id = c.tenant_id
+        WHERE u.id = $3 AND u.tenant_id = $1
+          AND (cta.team_id = m.equipo_local_id OR cta.team_id = m.equipo_visitante_id)
+          AND (cta.starts_on IS NULL OR cta.starts_on <= CURRENT_DATE)
+          AND (cta.ends_on IS NULL OR cta.ends_on >= CURRENT_DATE)
+      ))
     ORDER BY m.fecha ASC, m.kickoff_time ASC
     LIMIT $2
   `;
   
-  const result = await tenantQuery(tenantId, query, [tenantId, limit]);
+  const result = await tenantQuery(
+    tenantId,
+    query,
+    [tenantId, limit, coachUserId ?? null]
+  );
   return result.rows;
 }; 

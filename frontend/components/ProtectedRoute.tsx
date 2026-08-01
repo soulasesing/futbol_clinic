@@ -14,7 +14,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, roles }) => {
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      void router.replace(`/login?next=${encodeURIComponent(router.asPath)}`);
+      const loginPath = localStorage.getItem('loginPath') || '/';
+      const separator = loginPath.includes('?') ? '&' : '?';
+      void router.replace(
+        `${loginPath}${separator}next=${encodeURIComponent(router.asPath)}`
+      );
     }
   }, [isAuthenticated, isLoading, router]);
 

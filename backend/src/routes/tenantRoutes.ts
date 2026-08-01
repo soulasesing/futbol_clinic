@@ -11,6 +11,7 @@ router.use(requireSuperAdminAuth);
 router.get('/', tenantController.listTenants);
 router.post('/', tenantController.createTenantWithAdmin);
 router.get('/:id/detail', tenantController.getTenantDetail);
+router.patch('/:id/status', tenantController.setTenantStatus);
 router.put('/:id', tenantController.updateTenant);
 router.delete('/:id', tenantController.deleteTenant);
 router.get('/:id/admins', tenantController.getTenantAdmins);

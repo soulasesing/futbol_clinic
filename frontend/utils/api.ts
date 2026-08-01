@@ -26,6 +26,33 @@ const getErrorMessage = (payload: unknown): string => {
   return 'No fue posible completar la solicitud.';
 };
 
+const clearSuspendedSession = (status: number, payload: unknown): void => {
+  if (
+    status !== 403
+    || !payload
+    || typeof payload !== 'object'
+    || (payload as Record<string, unknown>).code !== 'TENANT_SUSPENDED'
+    || typeof window === 'undefined'
+  ) return;
+  const loginPath = localStorage.getItem('loginPath') || '/';
+  localStorage.removeItem('jwt');
+  localStorage.removeItem('user');
+  localStorage.removeItem('lastActivityAt');
+  window.location.assign(
+    `${loginPath}${loginPath.includes('?') ? '&' : '?'}suspended=1`
+  );
+};
+
+const clearUnauthorizedSession = (status: number): void => {
+  if (status !== 401 || typeof window === 'undefined') return;
+  const loginPath = localStorage.getItem('loginPath') || '/login';
+  localStorage.removeItem('jwt');
+  localStorage.removeItem('user');
+  localStorage.removeItem('lastActivityAt');
+  const separator = loginPath.includes('?') ? '&' : '?';
+  window.location.assign(`${loginPath}${separator}expired=1`);
+};
+
 export const apiRequest = async <T>(
   path: string,
   options: ApiRequestOptions = {},
@@ -59,10 +86,8 @@ export const apiRequest = async <T>(
   }
 
   if (!response.ok) {
-    if (response.status === 401 && typeof window !== 'undefined') {
-      localStorage.removeItem('jwt');
-      localStorage.removeItem('user');
-    }
+    clearSuspendedSession(response.status, payload);
+    clearUnauthorizedSession(response.status);
     throw new ApiError(getErrorMessage(payload), response.status, payload);
   }
 
@@ -87,10 +112,8 @@ export const apiBlob = async (
     } catch {
       payload = undefined;
     }
-    if (response.status === 401 && typeof window !== 'undefined') {
-      localStorage.removeItem('jwt');
-      localStorage.removeItem('user');
-    }
+    clearSuspendedSession(response.status, payload);
+    clearUnauthorizedSession(response.status);
     throw new ApiError(getErrorMessage(payload), response.status, payload);
   }
   return response.blob();

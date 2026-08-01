@@ -61,6 +61,23 @@ export const deleteTenant = async (req: Request, res: Response) => {
   }
 };
 
+export const setTenantStatus = async (req: Request, res: Response) => {
+  try {
+    const { status, reason } = req.body;
+    if (status !== 'active' && status !== 'suspended') {
+      res.status(400).json({ message: 'Estado de escuela inválido' });
+      return;
+    }
+    if (status === 'suspended' && (!reason || typeof reason !== 'string')) {
+      res.status(400).json({ message: 'Indica el motivo de la suspensión' });
+      return;
+    }
+    res.json(await tenantService.setTenantStatus(req.params.id, status, reason));
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
 export const getTenantDetail = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;

@@ -19,6 +19,7 @@ const Register: React.FC = () => {
     setSuccess('');
     if (!token) return setError('Token de invitación inválido');
     if (password !== repeatPassword) return setError('Las contraseñas no coinciden');
+    if (password.length < 12) return setError('La contraseña debe tener al menos 12 caracteres');
     setLoading(true);
     try {
       const res = await fetch('/api/auth/register', {
@@ -28,13 +29,7 @@ const Register: React.FC = () => {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Error de registro');
-      // Decodificar el JWT para extraer datos del usuario
-      const payload = JSON.parse(atob(data.jwt.split('.')[1]));
-      login(data.jwt, {
-        email: payload.email,
-        tenantId: payload.tenantId,
-        role: payload.role,
-      });
+      login(data.jwt, data.user);
       setSuccess('¡Registro exitoso! Redirigiendo...');
       setTimeout(() => router.push('/dashboard'), 1500);
     } catch (err: any) {
@@ -53,29 +48,31 @@ const Register: React.FC = () => {
       >
         <h1 className="text-3xl font-bold text-center text-emerald-700 mb-2">Completa tu registro</h1>
         <label className="flex flex-col gap-1 text-sm font-medium text-gray-700">
-          Nombre completo
+          <span>Nombre completo</span>
           <input
             type="text"
             value={nombre}
             onChange={e => setNombre(e.target.value)}
             required
+            minLength={12}
             className="rounded-lg border border-emerald-200 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400"
             aria-label="Nombre completo"
           />
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium text-gray-700">
-          Contraseña
+          <span>Contraseña</span>
           <input
             type="password"
             value={password}
             onChange={e => setPassword(e.target.value)}
             required
+            minLength={12}
             className="rounded-lg border border-emerald-200 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400"
             aria-label="Contraseña"
           />
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium text-gray-700">
-          Repetir contraseña
+          <span>Repetir contraseña</span>
           <input
             type="password"
             value={repeatPassword}

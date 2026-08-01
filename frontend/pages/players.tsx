@@ -1,13 +1,14 @@
 import React, { useEffect, useState, useRef } from 'react';
-import Navbar from '../components/Navbar';
+import AppShell from '../components/AppShell';
 import PlayerCard from '../components/PlayerCard';
 import { useAuth } from '../contexts/AuthContext';
+import AuthenticatedImage, { useAuthenticatedAssetUrl } from '../components/AuthenticatedImage';
 
 interface Player {
   id: string;
   nombre: string;
   apellido: string;
-  cedula: string;
+  cedula?: string;
   fecha_nacimiento: string;
   categoria: string;
   foto_url?: string;
@@ -22,7 +23,8 @@ interface Player {
   madre_apellido?: string;
   madre_email?: string;
   madre_telefono?: string;
-  created_at: string;
+  created_at?: string;
+  privacy_consent_confirmed?: boolean;
 }
 
 interface Team {
@@ -33,9 +35,13 @@ interface Team {
 
 const PAGE_SIZE = 10;
 
-const uploadImage = async (file: File): Promise<string | null> => {
+const uploadImage = async (
+  file: File,
+  kind: 'player-photo' | 'player-document'
+): Promise<string | null> => {
   const formData = new FormData();
   formData.append('file', file);
+  formData.append('kind', kind);
   const res = await fetch('/api/upload', { 
     method: 'POST', 
     body: formData,
@@ -65,7 +71,7 @@ const calcularEdad = (fecha: string) => {
 };
 
 const PlayersPage: React.FC = () => {
-  const { isAuthenticated, jwt } = useAuth() as any;
+  const { isAuthenticated, jwt, user } = useAuth() as any;
   const [players, setPlayers] = useState<Player[]>([]);
   const [search, setSearch] = useState('');
   const [filtered, setFiltered] = useState<Player[]>([]);
@@ -83,6 +89,7 @@ const PlayersPage: React.FC = () => {
   const docInputRef = useRef<HTMLInputElement>(null);
   const [showDocModal, setShowDocModal] = useState(false);
   const [selectedDocUrl, setSelectedDocUrl] = useState<string>('');
+  const resolvedDocumentUrl = useAuthenticatedAssetUrl(selectedDocUrl);
   const [teams, setTeams] = useState<Team[]>([]);
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
 
@@ -122,7 +129,7 @@ const PlayersPage: React.FC = () => {
       players.filter(p =>
         p.nombre.toLowerCase().includes(q) ||
         p.apellido.toLowerCase().includes(q) ||
-        p.cedula.toLowerCase().includes(q)
+        (p.cedula || '').toLowerCase().includes(q)
       )
     );
     setPage(1);
@@ -140,11 +147,11 @@ const PlayersPage: React.FC = () => {
       let foto_url: string | undefined = player.foto_url ?? undefined;
       let document_url: string | undefined = player.document_url ?? undefined;
       if (file) {
-        const uploaded = await uploadImage(file);
+        const uploaded = await uploadImage(file, 'player-photo');
         foto_url = uploaded ?? undefined;
       }
       if (docFile) {
-        const uploadedDoc = await uploadImage(docFile);
+        const uploadedDoc = await uploadImage(docFile, 'player-document');
         document_url = uploadedDoc ?? undefined;
       }
       const payload = { ...player, foto_url, document_url, team_ids: teamIds };
@@ -187,18 +194,17 @@ const PlayersPage: React.FC = () => {
   if (!isAuthenticated) return null;
 
   return (
-    <>
-      <Navbar />
-      <main className="min-h-screen bg-gradient-to-br from-emerald-50 to-white px-4 py-12">
+    <AppShell title="Jugadores" subtitle="Expedientes, equipos y seguimiento de deportistas.">
+      <div>
         <div className="max-w-5xl mx-auto flex flex-col gap-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-            <h1 className="text-3xl font-black bg-gradient-to-r from-emerald-700 via-green-600 to-teal-700 bg-clip-text text-transparent drop-shadow">Jugadores</h1>
-            <button
+            <span />
+            {user?.role === 'admin' && <button
               onClick={() => { setShowForm(true); setEditPlayer(null); setPreview(null); }}
               className="px-6 py-2 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold shadow hover:scale-105 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-400"
             >
               + Nuevo jugador
-            </button>
+            </button>}
           </div>
           <input
             type="text"
@@ -219,10 +225,10 @@ const PlayersPage: React.FC = () => {
                     <th className="p-3 text-left">Foto</th>
                     <th className="p-3 text-left">Nombre</th>
                     <th className="p-3 text-left">Apellido</th>
-                    <th className="p-3 text-left">Cédula</th>
+                    {user?.role === 'admin' && <th className="p-3 text-left">Cédula</th>}
                     <th className="p-3 text-left">Categoría(s)</th>
                     <th className="p-3 text-left">Edad</th>
-                    <th className="p-3 text-left">Acciones</th>
+                    {user?.role === 'admin' && <th className="p-3 text-left">Acciones</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -234,7 +240,7 @@ const PlayersPage: React.FC = () => {
                     >
                       <td className="p-2">
                         {player.foto_url && !imageErrors.has(player.id) ? (
-                          <img 
+                          <AuthenticatedImage
                             src={player.foto_url} 
                             alt="Foto" 
                             className="w-10 h-10 rounded-full object-cover border"
@@ -251,8 +257,8 @@ const PlayersPage: React.FC = () => {
                       </td>
                       <td className="p-2 font-semibold">{player.nombre}</td>
                       <td className="p-2">{player.apellido}</td>
-                      <td className="p-2">{player.cedula}</td>
-                      <td className="p-2">
+                      {user?.role === 'admin' && <td className="p-2">{player.cedula}</td>}
+                      {user?.role === 'admin' && <td className="p-2">
                         {player.teams && player.teams.length > 0 ? (
                           <div className="flex flex-wrap gap-1">
                             {player.teams.map(team => (
@@ -264,7 +270,7 @@ const PlayersPage: React.FC = () => {
                         ) : (
                           <span className="text-gray-300">—</span>
                         )}
-                      </td>
+                      </td>}
                       <td className="p-2">{calcularEdad(player.fecha_nacimiento)}</td>
                       <td className="p-2">
                         <button
@@ -330,6 +336,9 @@ const PlayersPage: React.FC = () => {
                     const madre_apellido = (form.elements.namedItem('madre_apellido') as HTMLInputElement).value;
                     const madre_email = (form.elements.namedItem('madre_email') as HTMLInputElement).value;
                     const madre_telefono = (form.elements.namedItem('madre_telefono') as HTMLInputElement).value;
+                    const privacyConsentConfirmed = (
+                      form.elements.namedItem('privacy_consent_confirmed') as HTMLInputElement
+                    )?.checked ?? false;
                     await handleSave({
                       id: editPlayer?.id || '',
                       nombre,
@@ -348,6 +357,7 @@ const PlayersPage: React.FC = () => {
                       madre_apellido,
                       madre_email,
                       madre_telefono,
+                      privacy_consent_confirmed: editPlayer ? undefined : privacyConsentConfirmed,
                       created_at: editPlayer?.created_at || new Date().toISOString()
                     }, file, docFile, teamIds);
                   }}
@@ -504,6 +514,20 @@ const PlayersPage: React.FC = () => {
                       <img src={docPreview || undefined} alt="Preview documento" className="w-28 h-20 rounded object-cover border mt-2 mx-auto" />
                     )}
                   </div>
+                  {!editPlayer && (
+                    <label className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+                      <input
+                        name="privacy_consent_confirmed"
+                        type="checkbox"
+                        required
+                        className="mt-1"
+                      />
+                      <span>
+                        Confirmo que la academia cuenta con autorización del representante
+                        legal para registrar y tratar los datos de este menor.
+                      </span>
+                    </label>
+                  )}
                   {formError && <div className="text-red-600 text-sm text-center">{formError}</div>}
                   <button
                     type="submit"
@@ -517,7 +541,7 @@ const PlayersPage: React.FC = () => {
             </div>
           )}
         </div>
-      </main>
+      </div>
       {/* Modal para mostrar documento */}
       {showDocModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -532,11 +556,15 @@ const PlayersPage: React.FC = () => {
             <div className="p-6">
               <h3 className="text-xl font-bold mb-4 text-emerald-700">Documento de Identidad</h3>
               <div className="flex justify-center">
-                <img 
-                  src={selectedDocUrl} 
-                  alt="Documento de identidad" 
-                  className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg"
-                />
+                {resolvedDocumentUrl ? (
+                  <img
+                    src={resolvedDocumentUrl}
+                    alt="Documento de identidad"
+                    className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg"
+                  />
+                ) : (
+                  <p className="py-12 text-slate-500">Cargando documento…</p>
+                )}
               </div>
             </div>
           </div>
@@ -548,17 +576,17 @@ const PlayersPage: React.FC = () => {
         <PlayerCard 
           player={selectedPlayer} 
           onClose={() => setSelectedPlayer(null)}
-          onEdit={(player) => {
+          onEdit={user?.role === 'admin' ? (player) => {
             setEditPlayer(player);
             setShowForm(true);
             setPreview(player.foto_url || null);
             setDocPreview(player.document_url || null);
             setSelectedPlayer(null);
-          }}
+          } : undefined}
           onRefresh={fetchPlayers}
         />
       )}
-    </>
+    </AppShell>
   );
 };
 

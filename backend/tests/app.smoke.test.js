@@ -5,6 +5,7 @@ process.env.JWT_SECRET =
 process.env.NODE_ENV = 'test';
 
 const app = require('../dist/app').default;
+const jwt = require('../dist/utils/jwt');
 
 describe('HTTP production surface', () => {
   test('exposes liveness and JSON not-found responses', async () => {
@@ -39,5 +40,18 @@ describe('HTTP production surface', () => {
         tenantId: 'super_admin',
       })
       .expect(400, { message: 'Faltan datos para login' });
+  });
+
+  test('renews a valid active session with a short-lived token', async () => {
+    const payload = {
+      userId: 'session-user',
+      tenantId: null,
+      role: 'super_admin',
+    };
+    const response = await request(app)
+      .post('/api/auth/refresh')
+      .set('Authorization', `Bearer ${jwt.sign(payload)}`)
+      .expect(200);
+    expect(jwt.verify(response.body.jwt)).toEqual(payload);
   });
 });

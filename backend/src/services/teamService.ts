@@ -1,16 +1,52 @@
 import { withTenantTransaction } from '../utils/db';
 import { v4 as uuidv4 } from 'uuid';
 
-export const getTeams = async (tenantId: string) =>
+export const getTeams = async (tenantId: string, coachUserId?: string) =>
   withTenantTransaction(tenantId, async (client) => {
-    const result = await client.query('SELECT * FROM teams WHERE tenant_id = $1', [tenantId]);
+    const result = await client.query(
+      `SELECT t.* FROM teams t
+       WHERE t.tenant_id = $1
+         AND ($2::UUID IS NULL OR EXISTS (
+           SELECT 1 FROM users u
+           JOIN coaches c ON LOWER(c.email) = LOWER(u.email)
+             AND c.tenant_id = u.tenant_id
+           JOIN coach_team_assignments cta
+             ON cta.coach_id = c.id AND cta.tenant_id = c.tenant_id
+           WHERE u.id = $2 AND u.tenant_id = $1 AND cta.team_id = t.id
+             AND (cta.starts_on IS NULL OR cta.starts_on <= CURRENT_DATE)
+             AND (cta.ends_on IS NULL OR cta.ends_on >= CURRENT_DATE)
+         ))
+       ORDER BY t.nombre`,
+      [tenantId, coachUserId ?? null]
+    );
     return result.rows;
   });
 
-export const getTeamsWithPlayersAndCoach = async (tenantId: string) =>
+export const getTeamsWithPlayersAndCoach = async (
+  tenantId: string,
+  coachUserId?: string
+) =>
   withTenantTransaction(tenantId, async (client) => {
   // Equipos
-  const teamsRes = await client.query('SELECT t.id, t.nombre, t.categoria, t.entrenador_id, c.nombre AS entrenador_nombre, c.apellido AS entrenador_apellido FROM teams t LEFT JOIN coaches c ON t.entrenador_id = c.id AND c.tenant_id = $1 WHERE t.tenant_id = $1', [tenantId]);
+  const teamsRes = await client.query(
+    `SELECT t.id, t.nombre, t.categoria, t.entrenador_id,
+       c.nombre AS entrenador_nombre, c.apellido AS entrenador_apellido
+     FROM teams t
+     LEFT JOIN coaches c ON t.entrenador_id = c.id AND c.tenant_id = $1
+     WHERE t.tenant_id = $1
+       AND ($2::UUID IS NULL OR EXISTS (
+         SELECT 1 FROM users u
+         JOIN coaches assigned ON LOWER(assigned.email) = LOWER(u.email)
+           AND assigned.tenant_id = u.tenant_id
+         JOIN coach_team_assignments cta
+           ON cta.coach_id = assigned.id AND cta.tenant_id = assigned.tenant_id
+         WHERE u.id = $2 AND u.tenant_id = $1 AND cta.team_id = t.id
+           AND (cta.starts_on IS NULL OR cta.starts_on <= CURRENT_DATE)
+           AND (cta.ends_on IS NULL OR cta.ends_on >= CURRENT_DATE)
+       ))
+     ORDER BY t.nombre`,
+    [tenantId, coachUserId ?? null]
+  );
   const teams = teamsRes.rows;
   // Para cada equipo, obtener jugadores
   for (const team of teams) {

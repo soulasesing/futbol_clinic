@@ -8,7 +8,7 @@ const router = Router();
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 5 * 1024 * 1024,
+    fileSize: 4 * 1024 * 1024,
     files: 1,
     fields: 10,
   },
@@ -29,7 +29,7 @@ router.post('/charges/:chargeId/proof', upload.single('file'), controller.upload
 
 router.use((error: Error, _req: AuthRequest, res: Response, _next: NextFunction) => {
   if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
-    res.status(413).json({ message: 'El comprobante excede el límite de 5 MB' });
+    res.status(413).json({ message: 'El comprobante excede el límite de 4 MB' });
     return;
   }
   res.status(400).json({ message: error.message || 'Archivo inválido' });
