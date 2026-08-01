@@ -68,6 +68,11 @@ const SuperAdminLogin: React.FC = () => {
             <input name="password" type="password" required autoComplete="current-password" className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3 outline-none focus:ring-2 focus:ring-emerald-500" />
           </label>
           {error && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">{error}</p>}
+          {router.query.expired === '1' && (
+            <output className="block rounded-xl bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
+              Tu sesión expiró por 10 minutos de inactividad. Inicia sesión nuevamente.
+            </output>
+          )}
           <button type="submit" disabled={submitting} className="w-full rounded-xl bg-emerald-600 px-4 py-3 font-black text-white disabled:opacity-60">
             {submitting ? 'Ingresando…' : 'Ingresar'}
           </button>

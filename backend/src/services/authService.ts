@@ -101,6 +101,13 @@ export const loginSuperAdmin = async (email: string, password: string) => {
   return { jwt: tokenJwt };
 };
 
+export const refreshSession = (payload: jwtUtil.JwtPayload): string =>
+  jwtUtil.sign({
+    userId: payload.userId,
+    tenantId: payload.tenantId,
+    role: payload.role,
+  });
+
 const passwordResetMessage = {
   message: 'Si la cuenta existe, recibirás un enlace para restablecer tu contraseña.',
 };

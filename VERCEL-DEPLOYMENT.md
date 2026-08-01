@@ -33,6 +33,7 @@ DATABASE_URL=<pooled application-role URL>
 MIGRATOR_DATABASE_URL=<direct migration-role URL; CI only>
 DATABASE_MAX_CONNECTIONS=3
 JWT_SECRET=<at least 32 random characters>
+JWT_ACCESS_TTL_MINUTES=11
 FRONTEND_URL=https://<frontend-domain>
 CORS_ORIGINS=https://<frontend-domain>
 BLOB_READ_WRITE_TOKEN=<public store token for logos and banners>

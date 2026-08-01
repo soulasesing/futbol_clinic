@@ -37,9 +37,20 @@ const clearSuspendedSession = (status: number, payload: unknown): void => {
   const loginPath = localStorage.getItem('loginPath') || '/';
   localStorage.removeItem('jwt');
   localStorage.removeItem('user');
+  localStorage.removeItem('lastActivityAt');
   window.location.assign(
     `${loginPath}${loginPath.includes('?') ? '&' : '?'}suspended=1`
   );
+};
+
+const clearUnauthorizedSession = (status: number): void => {
+  if (status !== 401 || typeof window === 'undefined') return;
+  const loginPath = localStorage.getItem('loginPath') || '/login';
+  localStorage.removeItem('jwt');
+  localStorage.removeItem('user');
+  localStorage.removeItem('lastActivityAt');
+  const separator = loginPath.includes('?') ? '&' : '?';
+  window.location.assign(`${loginPath}${separator}expired=1`);
 };
 
 export const apiRequest = async <T>(
@@ -76,10 +87,7 @@ export const apiRequest = async <T>(
 
   if (!response.ok) {
     clearSuspendedSession(response.status, payload);
-    if (response.status === 401 && typeof window !== 'undefined') {
-      localStorage.removeItem('jwt');
-      localStorage.removeItem('user');
-    }
+    clearUnauthorizedSession(response.status);
     throw new ApiError(getErrorMessage(payload), response.status, payload);
   }
 
@@ -105,10 +113,7 @@ export const apiBlob = async (
       payload = undefined;
     }
     clearSuspendedSession(response.status, payload);
-    if (response.status === 401 && typeof window !== 'undefined') {
-      localStorage.removeItem('jwt');
-      localStorage.removeItem('user');
-    }
+    clearUnauthorizedSession(response.status);
     throw new ApiError(getErrorMessage(payload), response.status, payload);
   }
   return response.blob();

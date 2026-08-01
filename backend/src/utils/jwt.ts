@@ -3,7 +3,11 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const JWT_EXPIRES_IN = '7d';
+const configuredAccessTokenMinutes = Number(process.env.JWT_ACCESS_TTL_MINUTES || 11);
+export const ACCESS_TOKEN_TTL_SECONDS =
+  (Number.isInteger(configuredAccessTokenMinutes) && configuredAccessTokenMinutes > 10
+    ? configuredAccessTokenMinutes
+    : 11) * 60;
 const ALLOWED_ROLES = new Set(['super_admin', 'admin', 'coach', 'parent']);
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -24,7 +28,7 @@ const getJwtSecret = (): string => {
 export const sign = (payload: JwtPayload): string => {
   return jwt.sign(payload, getJwtSecret(), {
     algorithm: 'HS256',
-    expiresIn: JWT_EXPIRES_IN,
+    expiresIn: ACCESS_TOKEN_TTL_SECONDS,
   });
 };
 
@@ -38,6 +42,8 @@ export const verify = (token: string): JwtPayload => {
     || typeof payload.userId !== 'string'
     || typeof payload.role !== 'string'
     || !ALLOWED_ROLES.has(payload.role)
+    || typeof payload.iat !== 'number'
+    || payload.iat + ACCESS_TOKEN_TTL_SECONDS <= Math.floor(Date.now() / 1000)
     || (
       payload.role !== 'super_admin'
       && (typeof payload.tenantId !== 'string' || !UUID_PATTERN.test(payload.tenantId))

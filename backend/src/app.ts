@@ -83,13 +83,17 @@ app.use('/api', rateLimit({
   limit: Number(process.env.API_RATE_LIMIT || 600),
   standardHeaders: 'draft-8',
   legacyHeaders: false,
-  skip: (req) => req.path === '/health' || req.path === '/ready',
+  skip: (req) =>
+    req.path === '/health'
+    || req.path === '/ready'
+    || req.path === '/auth/refresh',
 }));
 app.use('/api/auth', rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: Number(process.env.AUTH_RATE_LIMIT || 20),
   standardHeaders: 'draft-8',
   legacyHeaders: false,
+  skip: (req) => req.path === '/refresh',
 }));
 
 app.use('/api/auth', authRoutes);

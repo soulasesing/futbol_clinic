@@ -154,6 +154,11 @@ const TenantLoginPage: React.FC = () => {
               </span>
             </label>
             {formError && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">{formError}</p>}
+            {router.query.expired === '1' && (
+              <output className="block rounded-xl bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
+                Tu sesión expiró por 10 minutos de inactividad. Inicia sesión nuevamente.
+              </output>
+            )}
             {router.query.reset === 'success' && (
               <output className="block rounded-xl bg-green-50 px-3 py-2 text-sm font-semibold text-green-800">
                 Contraseña actualizada. Ya puedes iniciar sesión.

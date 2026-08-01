@@ -59,6 +59,14 @@ export const superAdminLogin = async (req: Request, res: Response) => {
   }
 };
 
+export const refreshSession = async (req: AuthRequest, res: Response): Promise<void> => {
+  if (!req.user) {
+    res.status(401).json({ message: 'Sesión inválida' });
+    return;
+  }
+  res.json({ jwt: authService.refreshSession(req.user) });
+};
+
 export const forgotPassword = async (req: Request, res: Response) => {
   try {
     const { email, slug } = req.body;
